@@ -396,3 +396,9 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# files
+*.pem
+configuration.php
+paperwork/
+vanillacode.php
