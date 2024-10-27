@@ -11,7 +11,6 @@ class Session
     public $all_session_requests = [];
     public $session_id;
     public $executionTime;
-    public $loans = [];
 
 
     function __construct()
@@ -21,7 +20,15 @@ class Session
 
     function createSessionRequest()
     {
-        $this->query(CREATESESSION, $this->getCreds());
+        try
+        {
+            $this->query(CREATESESSION, $this->getCreds());
+            $this->setSessionId();
+        }
+        catch(Exception $e)
+        {
+            $e->getMessage();
+        }
 
     }
 
@@ -47,13 +54,50 @@ class Session
         $end_time = $this->stopExecutionTime();
         $this->executionTime = $this->calculateExecutionTime($start_time, $end_time);
         $this->setRequestResponse($endpoint, $response, $start_time, $end_time, $this->executionTime);
-        //############  TODO check for errors in response right here ########################
+        if($this->request_response->isStatusOk() === false)
+        {
+            return throw new Exception("Error: ".$this->request_response->msg);
+        }
+        return $this->getRequestResponse();
+       
         $this->all_session_requests[] = $this->request_response;
     }
 
     function requestFileQuery($file_id)
     {
-        $this->query(REQUESTFILE, "sid=$this->session_id&uid=".USER."&fid=$file_id");
+        try
+        {
+            $this->query(REQUESTFILE, "sid=$this->session_id&uid=".USER."&fid=$file_id");
+            return $this->getRequestResponse();
+        }
+        catch(Exception $e)
+        {
+            echo $e->getMessage();
+        }
+        return $this->request_response;
+    }
+
+    function queryFiles()
+    {
+        $this->query(QUERYFILES, "uid=".USER."&sid=$this->session_id");
+        return $this->request_response;
+    }
+
+    function requestAllDocuments()
+    {
+        $this->query(REQUESTALLDOCS,"sid=$this->session_id&uid=".USER);
+        return $this->request_response;
+    }
+
+    function requestAllLoanIds()
+    {
+        return $this->query(REQUESTALLLOANS,"sid=$this->session_id&uid=".USER);
+    }
+
+    function requestFileByLoanNumber($loan_id)
+    {
+        $this->query(REQUESTFILEBYLOAN,"sid=$this->session_id&uid=".USER."&lid=$loan_id");
+        return $this->request_response;
     }
 
     function setPostData($curl_ch, $post_data)
@@ -107,12 +151,14 @@ class Session
         }
     }
 
+    function getRequestResponse()
+    {
+        return $this->request_response;
+    }
+
     function setSessionId()
     {
-        if($this->request_response->isStatusOk())
-        {
-            $this->session_id = $this->request_response->action;
-        }
+        $this->session_id = $this->request_response->action;
     }
 
     function getCreds()

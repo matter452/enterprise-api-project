@@ -1,11 +1,15 @@
 <?php
-require_once '/var/www/configuration.php'; //uncomment this when pushing onto server
+require_once '/var/www/private/configuration.php'; //uncomment this when pushing onto server
 //require_once 'configuration.php';
-require_once 'Session.php';
-require_once 'Db.php';
+require_once '/var/www/private/Session.php';
+require_once '/var/www/private/Db.php';
+require_once '/var/www/private/utils.php';
 
 $session = new Session();
 $session_id;
+$loans = [];
+$session_documents = [];
+
 
 /* $session->createSessionRequest($session->curl_ch, $session->getCreds());
 $session->displayEndpointResponse(); */
@@ -66,6 +70,8 @@ while(true)
         echo "\nenter file id:\n";
         $input = trim(fgets(STDIN));
         $session->requestFileQuery($input);
+        //utils.addDocumentToSession($session->request_response)
+        // utils.generateDocument($session->request_response);
         echo "\n".$session->request_response->status;
         echo "\n".$session->request_response->action."\n";
         echo "\n".$session->request_response->msg."\n";

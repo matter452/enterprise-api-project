@@ -49,7 +49,6 @@ class Response
     {
         if(preg_match("/\bok\b/mi", $this->status))
         {
-            echo "\n pattern matched\n";
             echo $this->status;
             return true;
         }
