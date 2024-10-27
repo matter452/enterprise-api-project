@@ -18,6 +18,7 @@ function extractFileNames($responseMsg)
     {
         return $matches[0];
     }
+    return false;
 }
 
 function extractLoanIds($responseMsg)

@@ -26,8 +26,19 @@ echo "\nsession created and set\n";
 
 $query_Response = $session->queryFiles();
 $response_msg = $query_Response->msg;
-$file_names = extractFileNames($response_msg);
-echo "\n$file_names\n";
+try
+{
+    $file_names = extractFileNames($response_msg);
+    if(!$file_names)
+    {
+        throw new Exception("No new files.");
+    }
+    echo "\n$file_names\n";
+}
+catch(Exception $e)
+{
+    echo $e->getMessage();
+}
 //$db->insertDocuments($file_names);
 
 echo "Terminating Session.\n";

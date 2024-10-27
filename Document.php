@@ -49,7 +49,7 @@ class Document
 
     function setFileType()
     {
-        $this->file_name
+        //$this->file_name;
     }
 
     
