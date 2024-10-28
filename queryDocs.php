@@ -1,7 +1,6 @@
 <?php
-require_once '/var/www/private/configuration.php'; //uncomment this when pushing onto server
+require_once '/var/www/private/configuration.php';
 require_once '/var/www/private/utils.php';
-//require_once 'configuration.php';
 require_once '/var/www/private/Session.php';
 require_once '/var/www/private/Db.php';
 $session = new Session();

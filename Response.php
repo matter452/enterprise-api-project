@@ -23,7 +23,7 @@ class Response
             $this->request_timestamp = $request_time;
             $this->received_timestamp = $received_time;
             $this->total_time = $execution_time;
-            $this->status = "Success: File Downloaded";
+            $this->status = "status ok";
             $this->msg = $response;
             $this->action = "Continue.";
         }
@@ -54,7 +54,7 @@ class Response
         }
         else
         {
-            echo "\nno match\n";
+            echo "\nbad status\n";
             echo $this->status;
             return false;
         }

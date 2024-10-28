@@ -1,6 +1,6 @@
 <?php
 //require_once('Loan.php');
-require_once('Response.php');
+require_once('/var/www/private/Response.php');
 
 class Session 
 {
@@ -56,7 +56,7 @@ class Session
         $this->setRequestResponse($endpoint, $response, $start_time, $end_time, $this->executionTime);
         if($this->request_response->isStatusOk() === false)
         {
-            return throw new Exception("Error: ".$this->request_response->msg);
+            return throw new Exception("Error: ".$this->request_response->status);
         }
         return $this->getRequestResponse();
        
@@ -67,14 +67,12 @@ class Session
     {
         try
         {
-            $this->query(REQUESTFILE, "sid=$this->session_id&uid=".USER."&fid=$file_id");
-            return $this->getRequestResponse();
+            return $this->query(REQUESTFILE, "sid=$this->session_id&uid=".USER."&fid=$file_id");
         }
         catch(Exception $e)
         {
             echo $e->getMessage();
         }
-        return $this->request_response;
     }
 
     function queryFiles()

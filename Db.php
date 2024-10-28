@@ -87,36 +87,53 @@ class Db
         $statement->execute();
     }
 
-    function insertDocuments($documents)
+    function insertDocuments($documents, $upload_type = "cron")
     {
+        $batch_size = 40;
         try
         {
-            $doc_insert_query = prepare_docs_insert_query($documents);
             $db = $this->db_conn;
-            $errored_file_names = [];
-            $statement = $db->prepare($doc_insert_query);
-            
-            if($statement === false)
-            {
-                throw new Exception("Error: could not prepare doc insert statement");
-            }
-                /* $loan_id = $document->loan_id;
-                $file_name = $document->file_name;
-                $file_type = $document->file_type;
-                $upload_date = $document->upload_date;
-                $upload_time = $document->upload_time;
-    
-                $statement->bind_param('sssss', $loan_id, $file_type, $upload_date, $upload_time, $file_name); */
-            if($statement->execute())
-            {
-                echo "Success: $documents added to database.";
-            }
-            else
-            {
-                throw new Exception("Error: Could not save documents data to database.");
-            }
-            $statement->close();
 
+            $sql_query = "INSERT INTO `Loan_Documents` 
+            (`doc_loan_number`, `doc_type`, `file_size`, `file_name`, `upload_datetime`, `file_content`, `upload_type`)
+            VALUES ";
+            $place_holders = [];
+            $doc_data = [];
+            $current_doc_number = 0;
+
+            foreach($documents as $doc)
+            {
+                $current_doc_number++;
+                [$loan_number, $doc_type, $file_name, $file_size, $binary_data, $formatted_datetime] = $doc;
+
+                array_push($doc_data, $loan_number, $doc_type, $file_size, $file_name, $formatted_datetime, $binary_data, $upload_type);
+                $place_holders[] = "(?, ?, ?, ?, ?, ?, ?)";
+
+                if($current_doc_number % $batch_size == 0 || $current_doc_number == count($documents))
+                {
+                    $formatted_query = $sql_query.implode(", ", $place_holders);
+                    $statement = $db->prepare($formatted_query);
+                    if(!$statement)
+                    {
+                        throw new Exception("Error: Could not prepare statement");
+                    }
+                    $statement->bind_param(str_repeat("sssssbs", count($place_holders)), ...$doc_data);
+
+                    if($statement->execute())
+                    {
+                        $affected_rows = $statement->affected_rows;
+                        echo "Success: Documents inserted\nRows affected: $affected_rows\n";
+                    }
+                    else
+                    {
+                        throw new Exception("Error: could not save docs to database\n");
+                    }
+                    $place_holders = [];
+                    $doc_data = [];
+                    $statement->close();
+                }
+
+            }
         }
         catch(Exception $e)
         {

@@ -45,7 +45,7 @@ function extractDataFromFileName($file_name)
         $formatted_date = preg_replace('/(\d{4})(\d{2})(\d{2})/', '$1-$2-$3', $date);
         $time = $matches[4];
         $formatted_time = preg_replace('/(\d{2})_(\d{2})_(\d{2})/', '$1:$2:$3', $time);
-        $formatted_datetime = "$date $time";
+        $formatted_datetime = "$formatted_date $formatted_time";
         $file_ext = $matches[5];
     
     echo "lid: $loan_number\n";
@@ -56,7 +56,7 @@ function extractDataFromFileName($file_name)
 
     $formatted_strings = "('$loan_number', '$doc_type', '$file_name', '$formatted_datetime')";
     
-    return $formatted_strings;
+    return [$loan_number, $doc_type, $file_name, $formatted_datetime];
     }
     return false;
 }
@@ -91,21 +91,52 @@ function prepareLoansInsertQuery($loan_numbers, $temp_table = true)
     return [$temp_query, $insert_query];
 }
 
-function prepare_docs_insert_query($doc_file_names)
+/* function prepareDocsInsertQuery($documents, $upload_type = "cron")
 {
-    $documents = [];
-    
-    foreach($doc_file_names as $file_name)
+    $sql_query = "INSERT INTO `Loan_documents` 
+    (`doc_loan_number`, `doc_type`, `file_size`, `file_name`, `upload_datetime`, `file_content`, `upload_type`)
+    VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+    $formattedDocs = [];
+    foreach($documents as $doc)
     {
-        echo "\n$file_name\n";
-        $doc_data_string = extractDataFromFileName($file_name);
-        $documents[] = $doc_data_string;
+        [$loan_number, $doc_type, $file_name, $file_size, $binary_data, $formatted_datetime] = $doc;
+        $formattedDocs[] = "('$loan_number', '$doc_type', '$file_size', '$file_name', '$upload_datetime', '$file_content')";
         
     }
     
-    $sql_multi_insert_query = "INSERT IGNORE INTO `Loan_documents` (`doc_loan_number`, `doc_type`, `file_name`, `upload_datetime`) VALUES " . implode(', ', $documents);
-    echo "\nPrepared doc insert query:\n $sql_multi_insert_query\n";
-    return $sql_multi_insert_query;
+    echo "\nPrepared doc insert query:\n $sql_query\n";
+    return $sql_query;
+
+} */
+
+function addToFileQueue()
+{
+
+}
+
+function removeFilesFromQueue()
+{
+
+}
+
+function openFileQueue()
+{
+
+}
+
+function createFileQueue()
+{
+
+}
+
+function closeFileQueue()
+{
+
+}
+
+function getFilenameFromQueue()
+{
 
 }
 
