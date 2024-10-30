@@ -62,7 +62,7 @@ class Session
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPIDLE, 10);
             curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 10);
             curl_setopt($this->curl_ch, CURLOPT_FRESH_CONNECT, true); 
-            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 5);
+            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 1);
         }
         curl_setopt($this->curl_ch, CURLOPT_URL, $endpoint);
         $this->setPostData($this->curl_ch, $query_data);
@@ -75,8 +75,13 @@ class Session
             if($connect_attempt < $this->max_attempt)
             {
                 echo "\ncurl error: " . curl_errno($this->curl_ch)." ". curl_error($this->curl_ch)."\n";
+                curl_close($this->curl_ch);
+                echo "retrying in 10 seconds\n";
+                sleep(10);
                 echo "retrying...\n";
+
                 $connect_attempt++;
+                $this->curl_ch = curl_init();
                 return $this->query($endpoint, $query_data, $connect_attempt, true);
             }
             else

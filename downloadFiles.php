@@ -4,18 +4,20 @@ require_once '/var/www/private/utils.php';
 require_once '/var/www/private/Session.php';
 require_once '/var/www/private/Db.php';
 $session = new Session();
+echo "creteing session\n";
+try
+{
 $session->createSessionRequest();
+echo "$session->session_id\n";
 $queuedFiles= [];
 $downloadedFiles= [];
 $errored_Files= [];
-try
-{
     $db = new Db(DB_USER, DB_PASS, DB_NAME);
     $queued_Files = $db->selectDocsWithoutFile();
     if(!$queued_Files)
     {
         echo "\nAll documents' files stored. nothing to do\n";
-        exit();
+        //exit();
     }
 }
 catch(Exception $e)

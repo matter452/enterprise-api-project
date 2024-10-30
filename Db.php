@@ -144,7 +144,7 @@ class Db
     function selectDocsWithoutFile()
     {
         $db = $this->db_conn;   
-        $sql_query  = "SELECT `doc_id`, `file_name` FROM `Loan_Documents` WHERE `file` IS null";
+        $sql_query  = "SELECT doc_id, file_name FROM `Loan_Documents` WHERE `file` IS NULL";
         $statement = $db->prepare($sql_query);
         $statement->execute();
         $result_array = $statement->get_result();
