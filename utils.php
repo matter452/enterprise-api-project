@@ -72,7 +72,7 @@ function prepareLoansInsertQuery($loan_numbers, $temp_table = true)
     
     foreach($loan_numbers as $loan)
     {
-        echo "\n$loan\n";
+        echo "$loan\n";
         $loans[] = "('$loan')";
         
     }

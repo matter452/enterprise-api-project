@@ -12,7 +12,7 @@ class Session
     public $session_id;
     public $executionTime;
     public $bad_SID = 0;
-    public $max_attempt = 3;
+    public $max_attempt = 6;
 
 
     function __construct()
@@ -56,13 +56,13 @@ class Session
         if($timeout_enabled)
         {
             curl_setopt($this->curl_ch, CURLOPT_CONNECTTIMEOUT, 20);
-            curl_setopt($this->curl_ch, CURLOPT_TIMEOUT, 40);
+            //curl_setopt($this->curl_ch, CURLOPT_TIMEOUT, 40);
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPALIVE, 1);
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPINTVL, 5);
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPIDLE, 10);
             curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 10);
             curl_setopt($this->curl_ch, CURLOPT_FRESH_CONNECT, true); 
-            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 5);
+            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 1);
         }
         curl_setopt($this->curl_ch, CURLOPT_URL, $endpoint);
         $this->setPostData($this->curl_ch, $query_data);

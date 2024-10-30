@@ -67,11 +67,11 @@ class Db
             if($statement->execute())
             {
                 $affected_rows = $statement->affected_rows;
-                echo "Success: Loans table updated\nAffected Rows: $affected_rows";
+                echo "Success: Loans table updated\nAffected Rows: $affected_rows\n";
             }
             else
             {
-                throw new Exception("Error: Could not save loans data to database.");
+                throw new Exception("Error: Could not save loans data to database.\n");
             }
         }
         catch(Exception $e)
