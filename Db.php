@@ -95,7 +95,7 @@ class Db
             $db = $this->db_conn;
 
             $sql_query = "INSERT INTO `Loan_Documents` 
-            (`doc_loan_number`, `doc_type`, `file_size`, `file_name`, `upload_datetime`, `file_content`, `upload_type`)
+            (`doc_loan_number`, `doc_type`, `file_name`, `upload_datetime`, `upload_type`)
             VALUES ";
             $place_holders = [];
             $doc_data = [];
@@ -104,10 +104,10 @@ class Db
             foreach($documents as $doc)
             {
                 $current_doc_number++;
-                [$loan_number, $doc_type, $file_name, $file_size, $binary_data, $formatted_datetime] = $doc;
+                [$loan_number, $doc_type, $file_name, $formatted_datetime] = $doc;
 
-                array_push($doc_data, $loan_number, $doc_type, $file_size, $file_name, $formatted_datetime, $binary_data, $upload_type);
-                $place_holders[] = "(?, ?, ?, ?, ?, ?, ?)";
+                array_push($doc_data, $loan_number, $doc_type, $file_name, $formatted_datetime, $upload_type);
+                $place_holders[] = "(?, ?, ?, ?, ?)";
 
                 if($current_doc_number % $batch_size == 0 || $current_doc_number == count($documents))
                 {
@@ -117,7 +117,7 @@ class Db
                     {
                         throw new Exception("Error: Could not prepare statement");
                     }
-                    $statement->bind_param(str_repeat("sssssbs", count($place_holders)), ...$doc_data);
+                    $statement->bind_param(str_repeat("sssss", count($place_holders)), ...$doc_data);
 
                     if($statement->execute())
                     {
@@ -141,8 +141,35 @@ class Db
         }  
     }
 
-    function updateDocumentFileBinary()
+    function selectDocsWithoutFile()
+    {
+        $db = $this->db_conn;   
+        $sql_query  = "SELECT `doc_id`, `file_name` FROM `Loan_Documents` WHERE `file` IS null";
+        $statement = $db->prepare($sql_query);
+        $statement->execute();
+        $result_array = $statement->get_result();
+        if($statement->num_rows <= 0)
+        {
+            return false;
+        }
+        $result_data = $result_array->fetch_all(MYSQLI_ASSOC);
+        return $result_data;
+        
+    }
+
+    function insertDocumentBinary($document_id, $file_binary)
     {
 
+        $db = $this->db_conn;
+        $sql_query = "INSERT INTO `document_data` (`doc_id`, `file_content`) VALUES (?, ?)";
+        $statement = $db->prepare($sql_query);
+        $statement->bind_params('sb', $document_id, $file_binary);
+        $statement->execute();
+        $affected_rows = $statement->affected_rows;
+        if($affected_rows <= 0)
+        {
+            return false;
+        }
+        return $affected_rows;
     }
 }

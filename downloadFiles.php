@@ -8,8 +8,47 @@ $session->createSessionRequest();
 $queuedFiles= [];
 $downloadedFiles= [];
 $errored_Files= [];
+try
+{
+    $db = new Db(DB_USER, DB_PASS, DB_NAME);
+    $queued_Files = $db->selectDocsWithoutFile();
+    if(!$queued_Files)
+    {
+        echo "\nAll documents' files stored. nothing to do\n";
+        exit();
+    }
+}
+catch(Exception $e)
+{
+    echo $e->getMessage();
+}
 
-$fp = fopen("downloadqueue.txt", "r");
+    foreach($queued_Files as $file)
+    {
+        try
+        {
+            echo "requesting ".$file['file_name']."\n";
+            $doc_binary = $session->requestFileQuery($file['file_name']);
+            if(!$doc_binary)
+            {
+                throw new Exception("Error: Failed to download ". $file['file_name']);
+            }
+            echo "inserting document binary\n";
+            $result = $db->insertDocumentBinary($file['doc_id'], $doc_binary);
+            if(!$result)
+            {
+                throw new Exception("Error: Failed to insert ". $file['file_name']." into db");
+            }
+            echo "Query ok: Successfully inserted ".$file['file_name'];
+        }
+        catch(Exception $e)
+        {
+            echo $e->getMessage();
+            continue;
+        }
+    }
+
+/* $fp = fopen("downloadqueue.txt", "r");
 echo "\nFile opened\nReading from file and queing docs\n";
 while(!feof($fp))
 {
@@ -25,7 +64,6 @@ fclose($fp);
 echo "file closed\n\n";
 foreach($queuedFiles as $file)
 {
-    echo "requesting $file\n";
     try{
        $response = $session->requestFileQuery($file);
         
@@ -67,7 +105,7 @@ else
 }
 echo "closing file\n";
 fclose($fp);
-echo "file closed\n";
+echo "file closed\n"; */
 $session->endSession();
 echo "Session ended";
 

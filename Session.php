@@ -11,6 +11,8 @@ class Session
     public $all_session_requests = [];
     public $session_id;
     public $executionTime;
+    public $bad_SID = 0;
+    public $max_attempt = 3;
 
 
     function __construct()
@@ -22,8 +24,13 @@ class Session
     {
         try
         {
-            $this->query(CREATESESSION, $this->getCreds());
+            $response = $this->query(CREATESESSION, $this->getCreds());
+            if(!$response)
+            {
+                throw new Exception("\nError: could not create session.\n");
+            }
             $this->setSessionId();
+            return $response;
         }
         catch(Exception $e)
         {
@@ -43,20 +50,47 @@ class Session
         $this->query(CLEARSESSION, $this->getCreds());
     }
     
-    function query($endpoint, $query_data)
+    function query($endpoint, $query_data, $connect_attempt = 0, $timeout_enabled = true)
     {
         curl_reset($this->curl_ch);
+        if($timeout_enabled)
+        {
+            curl_setopt($this->curl_ch, CURLOPT_CONNECTTIMEOUT, 20);
+            curl_setopt($this->curl_ch, CURLOPT_TIMEOUT, 40);
+            curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPALIVE, 1);
+            curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPINTVL, 5);
+            curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPIDLE, 10);
+            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 10);
+            curl_setopt($this->curl_ch, CURLOPT_FRESH_CONNECT, true); 
+            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 5);
+        }
         curl_setopt($this->curl_ch, CURLOPT_URL, $endpoint);
         $this->setPostData($this->curl_ch, $query_data);
         $this->request_endpoint = $endpoint;
         $start_time = $this->startExecutionTime();
         $response = curl_exec($this->curl_ch);
+        if($response == false)
+        {
+            //curl_errno($this->curl_ch)
+            if($connect_attempt < $this->max_attempt)
+            {
+                echo "\ncurl error: " . curl_errno($this->curl_ch)." ". curl_error($this->curl_ch)."\n";
+                echo "retrying...\n";
+                $connect_attempt++;
+                return $this->query($endpoint, $query_data, $connect_attempt, true);
+            }
+            else
+            {
+                echo "max retries hit. Api unresponsive.\n";
+                return false;
+            }
+        }
         $end_time = $this->stopExecutionTime();
         $this->executionTime = $this->calculateExecutionTime($start_time, $end_time);
         $this->setRequestResponse($endpoint, $response, $start_time, $end_time, $this->executionTime);
         if($this->request_response->isStatusOk() === false)
         {
-            return throw new Exception("Error: ".$this->request_response->status);
+            return false;
         }
         return $this->getRequestResponse();
        
@@ -77,8 +111,8 @@ class Session
 
     function queryFiles()
     {
-        $this->query(QUERYFILES, "uid=".USER."&sid=$this->session_id");
-        return $this->request_response;
+        return $this->query(QUERYFILES, "uid=".USER."&sid=$this->session_id");
+        
     }
 
     function requestAllDocuments()

@@ -54,7 +54,7 @@ class Response
         }
         else
         {
-            echo "\nbad status\n";
+            echo "\nbad response status\n";
             echo $this->status;
             return false;
         }
