@@ -25,16 +25,38 @@ class Session
         try
         {
             $response = $this->query(CREATESESSION, $this->getCreds());
+            echo $this->request_response->msg."\n";
             if(!$response)
             {
+                if(strstr($this->getRequestResponse()->msg, "Previous"))
+                {
+                    echo "attempting to retrieve previous session.\n";
+                    $db = new Db(DB_USER, DB_PASS, DB_NAME);
+                    $last_session_id = $db->getLastSession();
+                    $db->endDbConnection();
+                    if(!$last_session_id)
+                    {
+                        echo "attempting to clear session...\n";
+                        $this->clearSession();
+                        echo "session cleared.\n";
+                        return $this->createSessionRequest();
+                    }
+                    $this->setSessionId($last_session_id);
+                }
                 throw new Exception("\nError: could not create session.\n");
             }
             $this->setSessionId();
+            echo "session id set\n";
+            $db = new Db(DB_USER, DB_PASS, DB_NAME);
+            echo "attempting to set last session\n";
+            $db->setLastSession($this->session_id);
+            $db->endDbConnection();
             return $response;
         }
         catch(Exception $e)
         {
             $e->getMessage();
+            return false;
         }
 
     }
@@ -60,7 +82,7 @@ class Session
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPALIVE, 1);
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPINTVL, 5);
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPIDLE, 10);
-            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 10);
+            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 15);
             curl_setopt($this->curl_ch, CURLOPT_FRESH_CONNECT, true); 
             curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 1);
         }
@@ -95,6 +117,7 @@ class Session
         $this->setRequestResponse($endpoint, $response, $start_time, $end_time, $this->executionTime);
         if($this->request_response->isStatusOk() === false)
         {
+            echo "Server Responded with: ".$this->request_response->msg."\n";
             return false;
         }
         return $this->getRequestResponse();
@@ -193,8 +216,13 @@ class Session
         return $this->request_response;
     }
 
-    function setSessionId()
+    function setSessionId($manual = null)
     {
+        if($manual != null)
+        {
+            $this->session_id = trim($manual);
+            return;
+        }
         $this->session_id = $this->request_response->action;
     }
 

@@ -13,10 +13,15 @@ try
     $db = new Db(DB_USER, DB_PASS, DB_NAME);
     echo "creating session...\n";
     $session_created = $session->createSessionRequest();
-    while(!$session_created)
+    echo $session_created->request_response->msg;
+    if($session_created == false)
+    {
+        throw new Exception("Session not create\n");
+    }
+    /* while(!$session_created)
     {
         $session_created = $session->createSessionRequest();
-    }
+    } */
     $session_id = $session->session_id;
     echo "\nsession created and set\nSID = $session_id\n";
 }

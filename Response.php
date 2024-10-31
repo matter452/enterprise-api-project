@@ -49,13 +49,13 @@ class Response
     {
         if(preg_match("/\bok\b/mi", $this->status))
         {
-            echo $this->status;
+            echo $this->status."\n";
             return true;
         }
         else
         {
             echo "\nbad response status\n";
-            echo $this->status;
+            echo "$this->status\n";
             return false;
         }
     }

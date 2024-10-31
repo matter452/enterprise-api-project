@@ -143,33 +143,110 @@ class Db
 
     function selectDocsWithoutFile()
     {
-        $db = $this->db_conn;   
-        $sql_query  = "SELECT doc_id, file_name FROM `Loan_Documents` WHERE `file` IS NULL";
+        $db = $this->db_conn;
+        $sql_query  = "SELECT `doc_id`, `file_name` FROM `Loan_Documents` WHERE `file` IS NULL";
         $statement = $db->prepare($sql_query);
         $statement->execute();
         $result_array = $statement->get_result();
-        if($statement->num_rows <= 0)
+        $returned_rows = $result_array->fetch_all(MYSQLI_ASSOC);
+        if(empty($returned_rows))
         {
             return false;
         }
-        $result_data = $result_array->fetch_all(MYSQLI_ASSOC);
-        return $result_data;
+        return $returned_rows;
         
+    }
+
+    function updateDocumentsTableFileFlag()
+    {
+        try
+        {
+
+            $db = $this->db_conn;
+            $sql_query = "UPDATE `Loan_Documents` loand
+                    JOIN `document_data` docd ON loand.doc_id = docd.doc_id
+                    SET loand.file = 1
+                    WHERE docd.file_content IS NOT NULL AND docd.file_content != ''";
+            $statement = $db->prepare($sql_query);
+            $statement->execute();
+            $affected_rows = $statement->affected_rows;
+            if($affected_rows <= 0)
+            {
+                echo "No docs to update\n";
+                return;
+            }
+            echo "successfully marked hasfile in Documents table.\nRows affected: $affected_rows\n";
+        }catch(Exception $e)
+        {
+            echo $e->getMessage()."\n";
+        }
+
     }
 
     function insertDocumentBinary($document_id, $file_binary)
     {
+        try{
 
-        $db = $this->db_conn;
-        $sql_query = "INSERT INTO `document_data` (`doc_id`, `file_content`) VALUES (?, ?)";
-        $statement = $db->prepare($sql_query);
-        $statement->bind_params('sb', $document_id, $file_binary);
-        $statement->execute();
-        $affected_rows = $statement->affected_rows;
-        if($affected_rows <= 0)
+            $db = $this->db_conn;
+            $sql_query = "INSERT INTO `document_data` (`doc_id`, `file_content`) VALUES (?, ?)";
+            $statement = $db->prepare($sql_query);
+            $statement->bind_param('is', $document_id, $file_binary);
+            $statement->execute();
+            $affected_rows = $statement->affected_rows;
+            if($affected_rows <= 0)
+            {
+                return false;
+            }
+            echo "inserted ".strlen($file_binary)." bytes.";
+            return $affected_rows;
+        }
+        catch(Exception $e)
         {
+            echo $e->getMessage()."\n";
+        }
+    }
+
+    function setLastSession($sid)
+    {
+        try
+        {
+            $db = $this->db_conn;
+            $sql_query = "INSERT INTO `Sessions` (`session_id`, `session_number`) VALUES (1, ?)
+            ON DUPLICATE KEY UPDATE session_number = ?";
+
+            $statement = $db->prepare($sql_query);
+            $statement->bind_param('ss', $sid, $sid);
+            if($statement->execute())
+            {
+                echo "Last session stored in database successfully\n";
+            }
+            else
+            {
+                echo "Failed to store session in databse\n";
+            }
+    }
+    catch(Exception $e)
+    {
+        echo $e->getMessage()."\n";
+    }
+    }
+
+    function getLastSession()
+    {
+        $db = $this->db_conn;
+        $sql_query = "SELECT `session_number` FROM `Sessions`";
+        $result = $db->execute_query($sql_query);
+        if($result->num_rows === 0)
+        {
+            echo "Failed to get session in databse\n";
             return false;
         }
-        return $affected_rows;
+        else
+        {
+            echo "retrieved last session\n";
+            $sid_result = $result->fetch_row();
+            return $sid_result[0];
+        }
+        
     }
 }
