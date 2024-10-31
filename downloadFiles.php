@@ -24,7 +24,6 @@ $errored_Files= [];
     {
         try
         {
-            echo "requesting ".$file['file_name']."\n";
             $response_doc_binary = $session->requestFileQuery(trim($file['file_name']));
             $bin = $response_doc_binary->msg;
             if(!$response_doc_binary)
@@ -43,7 +42,7 @@ $errored_Files= [];
         }
         catch(Exception $e)
         {
-            echo $e->getMessage()."\n";
+            echo currTime()." ".$e->getMessage()."\n";
             continue;
         }
     }

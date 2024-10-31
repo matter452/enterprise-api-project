@@ -10,7 +10,7 @@ class Session
     public $request_response;
     public $all_session_requests = [];
     public $session_id;
-    public $executionTime;
+    public $execution_time;
     public $bad_SID = 0;
     public $max_attempt = 6;
 
@@ -24,38 +24,36 @@ class Session
     {
         try
         {
+            echo currTime()." Creating Session\n";
             $response = $this->query(CREATESESSION, $this->getCreds());
-            echo $this->request_response->msg."\n";
+            echo currTime()." ".$this->request_response->msg."\n";
             if(!$response)
             {
                 if(strstr($this->getRequestResponse()->msg, "Previous"))
                 {
-                    echo "attempting to retrieve previous session.\n";
+                    echo currTime()." Attempting to retrieve previous session.\n";
                     $db = new Db(DB_USER, DB_PASS, DB_NAME);
                     $last_session_id = $db->getLastSession();
                     $db->endDbConnection();
                     if(!$last_session_id)
                     {
-                        echo "attempting to clear session...\n";
+                        echo currTime()." Attempting to clear session...\n";
                         $this->clearSession();
-                        echo "session cleared.\n";
                         return $this->createSessionRequest();
                     }
                     $this->setSessionId($last_session_id);
                 }
-                throw new Exception("\nError: could not create session.\n");
+                throw new Exception("\n".currTime()." Error: could not create session.\n");
             }
             $this->setSessionId();
-            echo "session id set\n";
             $db = new Db(DB_USER, DB_PASS, DB_NAME);
-            echo "attempting to set last session\n";
             $db->setLastSession($this->session_id);
             $db->endDbConnection();
             return $response;
         }
         catch(Exception $e)
         {
-            $e->getMessage();
+            echo currTime()." ".$e->getMessage();
             return false;
         }
 
@@ -63,13 +61,17 @@ class Session
 
     function endSession()
     {
+        echo currTime()." Closing session...\n";
         $this->query(CLOSESESSION, "sid=".$this->session_id);
         curl_close($this->curl_ch);
+        echo currTime()." Session closed.\n";
     }
 
     function clearSession()
     {
+        echo currTime()." Clearing Session\n";
         $this->query(CLEARSESSION, $this->getCreds());
+        echo currTime()." session cleared.\n";
     }
     
     function query($endpoint, $query_data, $connect_attempt = 0, $timeout_enabled = true)
@@ -96,11 +98,11 @@ class Session
             //curl_errno($this->curl_ch)
             if($connect_attempt < $this->max_attempt)
             {
-                echo "\ncurl error: " . curl_errno($this->curl_ch)." ". curl_error($this->curl_ch)."\n";
+                echo "\n".currTime()." curl error: " . curl_errno($this->curl_ch)." ". curl_error($this->curl_ch)."\n";
                 curl_close($this->curl_ch);
                 echo "retrying in 10 seconds\n";
                 sleep(10);
-                echo "retrying...\n";
+                echo currTime()." retrying...\n";
 
                 $connect_attempt++;
                 $this->curl_ch = curl_init();
@@ -108,18 +110,32 @@ class Session
             }
             else
             {
-                echo "max retries hit. Api unresponsive.\n";
+                echo currTime()." max retries hit. Api unresponsive.\n";
                 return false;
             }
         }
         $end_time = $this->stopExecutionTime();
-        $this->executionTime = $this->calculateExecutionTime($start_time, $end_time);
-        $this->setRequestResponse($endpoint, $response, $start_time, $end_time, $this->executionTime);
+        $this->execution_time = $this->calculateExecutionTime($start_time, $end_time);
+        $this->setRequestResponse($endpoint, $response, $start_time, $end_time, $this->execution_time);
         if($this->request_response->isStatusOk() === false)
         {
-            echo "Server Responded with: ".$this->request_response->msg."\n";
-            return false;
+            echo currTime()." Server responded with: ".$this->request_response->msg."\n";
+            if(stristr($this->request_response->msg, "SID not found"))
+            {
+                $session = $this->createSessionRequest();
+                if($session === false)
+                {
+                    return false;
+                }
+                return $this->query($endpoint, $query_data, $connect_attempt = 0, $timeout_enabled = true);
+            }
+            else
+            {
+                return false;
+            }
         }
+        echo currTime()." Good Response\n";
+        echo currTime()." Execution time for this request: \n";
         return $this->getRequestResponse();
        
         $this->all_session_requests[] = $this->request_response;
@@ -128,34 +144,38 @@ class Session
     function requestFileQuery($file_id)
     {
         try
-        {
+        {   echo currTime()." Requesting File: $file_id\n";
             return $this->query(REQUESTFILE, "sid=$this->session_id&uid=".USER."&fid=$file_id");
         }
         catch(Exception $e)
         {
-            echo $e->getMessage();
+            echo currTime()." ".$e->getMessage();
         }
     }
 
     function queryFiles()
     {
+        echo currTime()." Querying Files available for download\n";
         return $this->query(QUERYFILES, "uid=".USER."&sid=$this->session_id");
         
     }
 
     function requestAllDocuments()
     {
+        echo currTime()." Requesting docs generated on system\n";
         $this->query(REQUESTALLDOCS,"sid=$this->session_id&uid=".USER);
         return $this->request_response;
     }
 
     function requestAllLoanIds()
     {
+        echo currTime()." Requesting all loan ids\n";
         return $this->query(REQUESTALLLOANS,"sid=$this->session_id&uid=".USER);
     }
 
     function requestFileByLoanNumber($loan_id)
     {
+        echo currTime()." Requesting all files available for loan id: $loan_id\n";
         $this->query(REQUESTFILEBYLOAN,"sid=$this->session_id&uid=".USER."&lid=$loan_id");
         return $this->request_response;
     }
@@ -196,11 +216,10 @@ class Session
         ($time_end-$time_start) / 60;
     }
     //create a new response obj and assign it to request_response property
-    function setRequestResponse($endpoint, $response, $start_time, $end_time, $execution_time)
+    function setRequestResponse($endpoint, $response, $start_time, $end_time, $execution_time, $file = null)
     {
         if($endpoint == REQUESTFILE && !strstr($response, "Status"))
         {
-            echo "\nfile request true and status: ok";
             $this->request_response = new Response($endpoint, $response, $start_time, $end_time, $execution_time, true);
             
         }
@@ -229,6 +248,11 @@ class Session
     function getCreds()
     {
         return $this->creds;
+    }
+
+    function getExecutionTime()
+    {
+        return $this->execution_time;
     }
 }
 

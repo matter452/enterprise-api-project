@@ -47,6 +47,7 @@ class Response
 
     function isStatusOk()
     {
+        echo currTime()." Checking response status...\n";
         if(preg_match("/\bok\b/mi", $this->status))
         {
             echo $this->status."\n";
@@ -54,7 +55,7 @@ class Response
         }
         else
         {
-            echo "\nbad response status\n";
+            echo currTime()." Error: Bad response\n";
             echo "$this->status\n";
             return false;
         }
