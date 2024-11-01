@@ -31,25 +31,25 @@ class Session
             {
                 if(strstr($this->getRequestResponse()->msg, "Previous"))
                 {
-                    echo currTime()." Attempting to retrieve previous session.\n";
+                    /* echo currTime()." Attempting to retrieve previous session.\n";
                     $db = new Db(DB_USER, DB_PASS, DB_NAME);
                     $last_session_id = $db->getLastSession();
                     $db->endDbConnection();
                     if(!$last_session_id)
-                    {
+                    { */
                         echo currTime()." Attempting to clear session...\n";
                         $this->clearSession();
                         return $this->createSessionRequest();
-                    }
-                    $this->setSessionId($last_session_id);
-                    return true;
+                    /* } */
+                    /* $this->setSessionId($last_session_id); */
+                    /* return true; */
                 }
                 //throw new Exception("\n".currTime()." Error: could not create session.\n");
             }
             $this->setSessionId();
-            $db = new Db(DB_USER, DB_PASS, DB_NAME);
+/*             $db = new Db(DB_USER, DB_PASS, DB_NAME);
             $db->setLastSession($this->session_id);
-            $db->endDbConnection();
+            $db->endDbConnection(); */
             return $response;
         }
         catch(Exception $e)
