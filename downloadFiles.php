@@ -59,6 +59,7 @@ catch(Exception $e)
 }
 echo "\n Terminating session...\n";
 $session->endSession();
+echo currTime()." Job Finished\n";
 
 /* $fp = fopen("downloadqueue.txt", "r");
 echo "\nFile opened\nReading from file and queing docs\n";
