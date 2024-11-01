@@ -81,7 +81,7 @@ class Session
         if($endpoint == REQUESTFILE)
         {
             curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 1);
-            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 12);
+            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 5);
         }
         if($timeout_enabled && ($endpoint != REQUESTFILE))
         {

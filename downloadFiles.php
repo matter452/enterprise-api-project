@@ -14,6 +14,7 @@ try
     $errored_Files= [];
 
     $db = new Db(DB_USER, DB_PASS, DB_NAME);
+    $db->updateDocumentsTableFileFlag();
     $queued_Files = $db->selectDocsWithoutFile();
     //$queued_Files[] = [['file_name: 204976183-Personal-20241030_14_17_55.pdf']]
     if(!$queued_Files)
