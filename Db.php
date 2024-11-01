@@ -7,19 +7,21 @@ class Db
 
     function __construct($user, $pass, $db)
     {
+        echo currTime()." Establishing Db Connection...\n";
         $db_conn = new mysqli($this->host, $user, $pass, $db);
         if(mysqli_connect_errno())
         {
             return mysqli_connect_error();
         }
-        echo "We connected to db\n";
+        echo "Db connection established\n\n";
         $this->db_conn = $db_conn;
     }
 
     function endDbConnection()
     {
+        echo currTime()." Terminating Db connection...\n";
         $this->db_conn->close();
-        echo "Db connection closed\n";
+        echo currTime()." Db connection closed\n\n";
     }
 
     function selectDocuments()
@@ -50,24 +52,24 @@ class Db
     {
         try
         {
-            
+            echo currTime()."Attempting to insert Loans...\n";
             $this->createTempLoanTable();
-            $db = $this->db_conn;
             [$temp_query, $insert_query] = prepareLoansInsertQuery($loan_numbers);
 
-            $statement = $db->prepare($temp_query);
+            $statement = $this->db_conn->prepare($temp_query);
             $statement->execute();
 
-            $statement = $db->prepare($insert_query);
+            $statement = $this->db_conn->prepare($insert_query);
             
             if($statement === false)
             {
-                throw new Exception("Error: could not prepare doc insert statement");
+                throw new Exception("Error: could not prepare loans insert statement");
             }
             if($statement->execute())
             {
                 $affected_rows = $statement->affected_rows;
-                echo "Success: Loans table updated\nAffected Rows: $affected_rows\n";
+                $statement->close();
+                echo currTime()." Success: Loans table updated\nAffected Rows: $affected_rows\n\n";
             }
             else
             {
@@ -76,7 +78,7 @@ class Db
         }
         catch(Exception $e)
         {
-            echo $e->getMessage();
+            echo currTime()." ".$e->getMessage();
         }
     }
 
@@ -85,21 +87,52 @@ class Db
         $sql_query = "CREATE TEMPORARY TABLE TempLoans (loan_id VARCHAR(50))";
         $statement = $this->db_conn->prepare($sql_query);
         $statement->execute();
+        $statement->close();
     }
 
-    function insertDocuments($documents, $upload_type = "cron")
+    function createTempDocTable()
+    {
+        $sql_query = "CREATE TEMPORARY TABLE TempDocs (file_name VARCHAR(50))";
+        $statement = $this->db_conn->prepare($sql_query);
+        $statement->execute();
+        $statement->close();
+    }
+
+    function insertDocuments($documents, $upload_type = "cron", $audit = false)
     {
         $batch_size = 40;
+
         try
         {
-            $db = $this->db_conn;
+            if($audit)
+            {
+                $this->createTempDocTable();
+                $temp_docs_query = "INSERT INTO `TempDocs` (`file_name`) VALUES " . implode(', ', $documents);
+                $statement = $this->db_conn->prepare($temp_docs_query);
+                $statement->execute();
+                $sql_query = "SELECT temp.file_name
+                FROM `TempDocs` temp
+                LEFT JOIN `Loan_Documents` ld ON temp.file_name = ld.file_name
+                WHERE ld.file_name IS NULL";
 
+                $statement->prepare($sql_query);
+                $statement->execute();
+                $result = $statement->get_result();
+                $result_array = $result->fetch_all(MYSQLI_ASSOC);
+                echo currTime()." Finished audit operations.\n";
+                $statement->close();
+                return $result_array;
+
+            }
             $sql_query = "INSERT INTO `Loan_Documents` 
             (`doc_loan_number`, `doc_type`, `file_name`, `upload_datetime`, `upload_type`)
             VALUES ";
             $place_holders = [];
             $doc_data = [];
             $current_doc_number = 0;
+
+
+
 
             foreach($documents as $doc)
             {
@@ -112,43 +145,41 @@ class Db
                 if($current_doc_number % $batch_size == 0 || $current_doc_number == count($documents))
                 {
                     $formatted_query = $sql_query.implode(", ", $place_holders);
-                    $statement = $db->prepare($formatted_query);
+                    $statement = $this->db_conn->prepare($formatted_query);
                     if(!$statement)
                     {
-                        throw new Exception("Error: Could not prepare statement");
+                        throw new Exception("Error: Could not prepare statement\n\n");
                     }
                     $statement->bind_param(str_repeat("sssss", count($place_holders)), ...$doc_data);
-
                     if($statement->execute())
                     {
                         $affected_rows = $statement->affected_rows;
-                        echo "Success: Documents inserted\nRows affected: $affected_rows\n";
+                        echo currTime()." Success: Documents inserted\nRows affected: $affected_rows\n\n";
+                        $place_holders = [];
+                        $doc_data = [];
+                        $statement->close();
                     }
                     else
                     {
-                        throw new Exception("Error: could not save docs to database\n");
+                        throw new Exception("Error: could not save docs to database\n\n");
                     }
-                    $place_holders = [];
-                    $doc_data = [];
-                    $statement->close();
                 }
-
             }
         }
         catch(Exception $e)
         {
-            echo $e->getMessage();
+            echo currTime()." ".$e->getMessage()."\n\n";
         }  
     }
 
     function selectDocsWithoutFile()
     {
-        $db = $this->db_conn;
         $sql_query  = "SELECT `doc_id`, `file_name` FROM `Loan_Documents` WHERE `file` IS NULL";
-        $statement = $db->prepare($sql_query);
+        $statement = $this->db_conn->prepare($sql_query);
         $statement->execute();
         $result_array = $statement->get_result();
         $returned_rows = $result_array->fetch_all(MYSQLI_ASSOC);
+        $statement->close();
         if(empty($returned_rows))
         {
             return false;
@@ -162,20 +193,20 @@ class Db
         try
         {
 
-            $db = $this->db_conn;
             $sql_query = "UPDATE `Loan_Documents` loand
                     JOIN `document_data` docd ON loand.doc_id = docd.doc_id
                     SET loand.file = 1
                     WHERE docd.file_content IS NOT NULL AND docd.file_content != ''";
-            $statement = $db->prepare($sql_query);
+            $statement = $this->db_conn->prepare($sql_query);
             $statement->execute();
             $affected_rows = $statement->affected_rows;
+            $statement->close();
             if($affected_rows <= 0)
             {
-                echo "No docs to update\n";
+                echo "No docs to update\n\n";
                 return;
             }
-            echo "successfully marked hasfile in Documents table.\nRows affected: $affected_rows\n";
+            echo "successfully marked hasfile in Documents table.\nRows affected: $affected_rows\n\n";
         }catch(Exception $e)
         {
             echo $e->getMessage()."\n";
@@ -187,12 +218,12 @@ class Db
     {
         try{
 
-            $db = $this->db_conn;
             $sql_query = "INSERT INTO `document_data` (`doc_id`, `file_content`) VALUES (?, ?)";
-            $statement = $db->prepare($sql_query);
+            $statement = $this->db_conn->prepare($sql_query);
             $statement->bind_param('is', $document_id, $file_binary);
             $statement->execute();
             $affected_rows = $statement->affected_rows;
+            $statement->close();
             if($affected_rows <= 0)
             {
                 return false;
@@ -202,7 +233,7 @@ class Db
         }
         catch(Exception $e)
         {
-            echo $e->getMessage()."\n";
+            echo $e->getMessage()."\n\n";
         }
     }
 
@@ -210,19 +241,19 @@ class Db
     {
         try
         {
-            $db = $this->db_conn;
             $sql_query = "INSERT INTO `Sessions` (`session_id`, `session_number`) VALUES (1, ?)
             ON DUPLICATE KEY UPDATE session_number = ?";
 
-            $statement = $db->prepare($sql_query);
+            $statement = $this->db_conn->prepare($sql_query);
             $statement->bind_param('ss', $sid, $sid);
             if($statement->execute())
             {
-                echo "Last session stored in database successfully\n";
+                echo "Last session stored in database successfully\n\n";
+                $statement->close();
             }
             else
             {
-                echo "Failed to store session in databse\n";
+                echo "Failed to store session in databse\n\n";
             }
     }
     catch(Exception $e)
@@ -233,17 +264,16 @@ class Db
 
     function getLastSession()
     {
-        $db = $this->db_conn;
         $sql_query = "SELECT `session_number` FROM `Sessions`";
-        $result = $db->execute_query($sql_query);
+        $result = $this->db_conn->execute_query($sql_query);
         if($result->num_rows === 0)
         {
-            echo "Failed to get session in databse\n";
+            echo "Failed to get session in databse\n\n";
             return false;
         }
         else
         {
-            echo "retrieved last session\n";
+            echo "retrieved last session\n\n";
             $sid_result = $result->fetch_row();
             return $sid_result[0];
         }

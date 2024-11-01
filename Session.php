@@ -27,7 +27,7 @@ class Session
             echo currTime()." Creating Session\n";
             $response = $this->query(CREATESESSION, $this->getCreds());
             echo currTime()." ".$this->request_response->msg."\n";
-            if(!$response)
+            if(!$response || null)
             {
                 if(strstr($this->getRequestResponse()->msg, "Previous"))
                 {
@@ -42,8 +42,9 @@ class Session
                         return $this->createSessionRequest();
                     }
                     $this->setSessionId($last_session_id);
+                    return true;
                 }
-                throw new Exception("\n".currTime()." Error: could not create session.\n");
+                //throw new Exception("\n".currTime()." Error: could not create session.\n");
             }
             $this->setSessionId();
             $db = new Db(DB_USER, DB_PASS, DB_NAME);
@@ -77,16 +78,23 @@ class Session
     function query($endpoint, $query_data, $connect_attempt = 0, $timeout_enabled = true)
     {
         curl_reset($this->curl_ch);
+        if($endpoint == REQUESTFILE)
+        {
+            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 1);
+            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 12);
+        }
+        if($timeout_enabled && ($endpoint != REQUESTFILE))
+        {
+            curl_setopt($this->curl_ch, CURLOPT_TIMEOUT, 40);
+        }
+
         if($timeout_enabled)
         {
-            curl_setopt($this->curl_ch, CURLOPT_CONNECTTIMEOUT, 20);
-            //curl_setopt($this->curl_ch, CURLOPT_TIMEOUT, 40);
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPALIVE, 1);
+            curl_setopt($this->curl_ch, CURLOPT_CONNECTTIMEOUT, 20);
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPINTVL, 5);
             curl_setopt($this->curl_ch, CURLOPT_TCP_KEEPIDLE, 10);
-            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_TIME, 15);
             curl_setopt($this->curl_ch, CURLOPT_FRESH_CONNECT, true); 
-            curl_setopt($this->curl_ch, CURLOPT_LOW_SPEED_LIMIT, 1);
         }
         curl_setopt($this->curl_ch, CURLOPT_URL, $endpoint);
         $this->setPostData($this->curl_ch, $query_data);
@@ -110,7 +118,7 @@ class Session
             }
             else
             {
-                echo currTime()." max retries hit. Api unresponsive.\n";
+                echo currTime()." Error: max retries hit. Api unresponsive.\n";
                 return false;
             }
         }
@@ -135,7 +143,7 @@ class Session
             }
         }
         echo currTime()." Good Response\n";
-        echo currTime()." Execution time for this request: \n";
+        echo currTime()." Execution time for this request: $this->execution_time\n\n";
         return $this->getRequestResponse();
        
         $this->all_session_requests[] = $this->request_response;

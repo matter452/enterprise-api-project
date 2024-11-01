@@ -54,7 +54,7 @@ function extractDataFromFileName($file_name)
     echo "time: $formatted_time\n";
     echo "file ext: $file_ext\n";
 
-    $formatted_strings = "('$loan_number', '$doc_type', '$file_name', '$formatted_datetime')";
+   // $formatted_strings = "('$loan_number', '$doc_type', '$file_name', '$formatted_datetime')";
     
     return [$loan_number, $doc_type, $file_name, $formatted_datetime];
     }
@@ -72,7 +72,6 @@ function prepareLoansInsertQuery($loan_numbers, $temp_table = true)
     
     foreach($loan_numbers as $loan)
     {
-        echo "$loan\n";
         $loans[] = "('$loan')";
         
     }
@@ -93,7 +92,22 @@ function prepareLoansInsertQuery($loan_numbers, $temp_table = true)
 
 /* function prepareDocsInsertQuery($documents, $upload_type = "cron")
 {
-    $sql_query = "INSERT INTO `Loan_documents` 
+    if(empty($document))
+    {
+        return [null, null];
+    }
+    foreach($documents as $doc)
+    {
+        $all_documents[] = "('$doc')";
+    }
+
+    $temp_docs_query = "INSERT INTO `TempDocs (`file_name`) VALUES " . implode(', ', $all_documents);
+
+    $sql_query = "SELECT temp.file_name
+    FROM `TempDocs` temp
+    LEFT JOIN `Loan_Documents` ld ON temp.file_name = ld.file_name
+    WHERE ld.file_name IS NULL";
+    
     (`doc_loan_number`, `doc_type`, `file_size`, `file_name`, `upload_datetime`, `file_content`, `upload_type`)
     VALUES (?, ?, ?, ?, ?, ?, ?)";
 

@@ -6,39 +6,35 @@ require_once '/var/www/private/Db.php';
 
 try
 {
-    $date = date("Y-m-d H:i:s");
-    echo currTime()." Querying all loans\nStarting at $date \n";
     $session = new Session();
-    $session_id;
     $session->createSessionRequest();
     $session->setSessionId();
-    $db_conn = new Db(DB_USER, DB_PASS, DB_NAME);
+    echo currTime()." Session id: $session->session_id\n";
     
-    echo "\n".currTime()." New Session Created\nSession id: $session->session_id\n";
     
+    echo currTime()." Querying all loans\n";
     $query_response = $session->requestAllLoanIds();
     $response_msg = $query_response->msg;
     $loans = extractLoanIds($response_msg);
+    $db_conn = new Db(DB_USER, DB_PASS, DB_NAME);
     $db_conn->insertLoans($loans);
-    echo "\nDb ops complete\nTerminating Db connection...\n...\n";
+    echo currTime()." Db operations finished.\n";
     $db_conn->endDbConnection();
     
     
 }
 catch(Exception $e)
 {
-    echo $e->getMessage()."\n";
+    echo currTime()." ".$e->getMessage()."\n";
 }
 try
 {
     $session->endSession();
-    $date = date("Y-m-d H:i:s");
-    echo "\n$date Session ended.\nexited.\n";
 }
 catch(Exception $e)
 {
-    echo currTime()." could not terminate session.";
+    echo currTime()." Error: Could not terminate session.\n";
     echo $e->getMessage()."\n";
 }
-
+echo currTime()." Job Finished";
 ?>
