@@ -5,6 +5,7 @@ require_once '/var/www/private/Session.php';
 require_once '/var/www/private/Db.php';
 try
 {
+    echo currTime()." Starting queryDocs job\n\n##################\n";
     $loans = [];
     $session_documents = [];
     $session = new Session();
@@ -88,7 +89,7 @@ catch(Exception $e)
 {
     echo currTime()." ".$e->getMessage();
 }
-echo currTime()." Job Finished\n";
+echo currTime()." Job Finished\n\n##################\n";
 
 function updateAllDocuments($session, $db)
 {

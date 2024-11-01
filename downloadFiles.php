@@ -6,6 +6,7 @@ require_once '/var/www/private/Db.php';
 
 try
 {
+    echo currTime()." Starting downloadFiles job\n\n##################\n";
     $session = new Session();
     $session->createSessionRequest();
     echo currTime()." Session id: $session->session_id\n";
@@ -59,7 +60,7 @@ catch(Exception $e)
 }
 echo "\n Terminating session...\n";
 $session->endSession();
-echo currTime()." Job Finished\n";
+echo currTime()." Job Finished\n\n##################\n";
 
 /* $fp = fopen("downloadqueue.txt", "r");
 echo "\nFile opened\nReading from file and queing docs\n";
