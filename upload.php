@@ -7,9 +7,17 @@ $temp_dir = "/var/www/private/tempUpload/";
 $upload_success = 1;
 $pdf_type = "application/pdf";
 
-if(isset($_POST["submit"]))
+$response = [
+    "success" => false,
+    "message" => "An unknown error occurred."
+];
+
+if(isset($_POST['submit']) && $_POST['submit'] == "submit" )
 {
     try{
+        if (!isset($_FILES["userfile"])) {
+            throw new Exception("Error: No file uploaded.");
+        }
         $user_file = $_FILES["userfile"]["name"];
         $file_type = $_FILES["userfile"]["type"];
         $file_tmp_path = $_FILES["userfile"]['tmp_name'];
@@ -57,6 +65,8 @@ if(isset($_POST["submit"]))
             $file_bin = file_get_contents($user_file, $file_tmp_path);
             $db_conn->insertDocumentBinary($doc_id, $file_bin);
             $db->endDbConnection();
+            $response["success"] = true;
+            $response["message"] = "File uploaded successfully!";
         }
 
         if($loan_option == 'existing')
@@ -64,10 +74,15 @@ if(isset($_POST["submit"]))
 
         }
 
-
+        header('Content-Type: application/json');
+        echo $response;
+        
     }catch(Exception $e){
-            $resultMessage = $e->getMessage();
-        }
+        $response["message"] = $e->getMessage();
+        header('Content-Type: application/json');
+        echo $response;
+    }
+}else{
+
 }
-header("Location: form_page.php?message=" . urlencode($resultMessage))
 ?>

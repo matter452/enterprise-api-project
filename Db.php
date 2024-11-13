@@ -205,16 +205,23 @@ class Db
         
     }
 
-    function updateDocumentsTableFileFlag()
+    function updateDocumentsTableFileFlag($manual = false, $doc_id = null)
     {
         try
         {
+            if(!$manual)
+            {
 
-            $sql_query = "UPDATE `Loan_Documents` loand
+                $sql_query = "UPDATE `Loan_Documents` loand
                     JOIN `document_data` docd ON loand.doc_id = docd.doc_id
                     SET loand.file = 1
                     WHERE docd.file_content IS NOT NULL AND docd.file_content != ''";
-            $statement = $this->db_conn->prepare($sql_query);
+                    $statement = $this->db_conn->prepare($sql_query);
+                }else{
+                    $sql_query = "UPDATE `Loan_Documents` SET `file` = 1 WHERE `doc_id` = ?";
+                    $statement = $this->db_conn->prepare($sql_query);
+                    $statement->bind_param('i', $doc_id);
+            }
             $statement->execute();
             $affected_rows = $statement->affected_rows;
             $statement->close();
