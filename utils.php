@@ -2,14 +2,14 @@
 
 
 
-function generateFile($document)
+/* function generateFile($document)
 {
     $file_write_success = file_put_contents("/var/session_files/$loan_number/".$document->file_name.$document->file_type, $document->file_binary);
     if($file_write_success === false)
     {
         return throw new Exception("Error: Failed to write file ".$document->file_name);
     }
-}
+} */
 
 function extractFileNames($responseMsg)
 {
@@ -124,34 +124,27 @@ function prepareLoansInsertQuery($loan_numbers, $temp_table = true)
 
 } */
 
-function addToFileQueue()
+function addDocumentsToDb($db, $file_names, $uploader, $audit)
 {
-
-}
-
-function removeFilesFromQueue()
-{
-
-}
-
-function openFileQueue()
-{
-
-}
-
-function createFileQueue()
-{
-
-}
-
-function closeFileQueue()
-{
-
-}
-
-function getFilenameFromQueue()
-{
-
+    if(!$file_names)
+    {
+        throw new Exception("No new files.\n");
+    }
+    
+    foreach($file_names as $file)
+    {
+        try{
+            [$loan_number, $doc_type, $file_name, $formatted_datetime] = extractDataFromFileName($file);
+            $session_documents[] = [$loan_number, $doc_type, $file_name, $formatted_datetime];
+        }
+        catch(Exception $e)
+        {
+            echo "Error: $file has bad format\n";
+            echo currTime()." ".$e->getMessage();
+        }
+    }
+    echo currTime()." inserting documents\n";
+    $db->insertDocuments($session_documents, $uploader, $audit);
 }
 
 function currTime()

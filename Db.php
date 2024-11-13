@@ -188,6 +188,23 @@ class Db
         
     }
 
+    function selectDocidByFilename($file_name)
+    {
+        $sql_query  = "SELECT `doc_id` FROM `Loan_Documents` WHERE `file_name` = ?";
+        $statement = $this->db_conn->prepare($sql_query);
+        $statement->bind_param('s', $file_name);
+        $statement->execute();
+        $result_array = $statement->get_result();
+        $returned_rows = $result_array->fetch_all(MYSQLI_ASSOC);
+        $statement->close();
+        if(empty($returned_rows))
+        {
+            return false;
+        }
+        return $returned_rows;
+        
+    }
+
     function updateDocumentsTableFileFlag()
     {
         try
@@ -278,5 +295,42 @@ class Db
             return $sid_result[0];
         }
         
+    }
+
+    function getDocWithName($file_name)
+    {
+        try
+        {
+            $sql_query = "SELECT `file_name` FROM `Loan_Documents` WHERE `file_name` = ?";
+            $statement = $this->db_conn->prepare($sql_query);
+            $statement->bind_param('s', $file_name);
+            $statement->execute();
+            $statement->store_result();
+            
+            return $statement->num_rows;
+        }
+        catch(Exception $e)
+        {
+            echo $e->getMessage()."\n";
+        }
+    }
+
+    function getCountOfDocTypeForLoan($loan_number, $doc_type)
+    {
+        try
+        {
+        $sql_query = "SELECT COUNT(*) AS doc_type_count FROM `Loan_Documents`
+        WHERE doc_loan_number = ? AND doc_type = ?";
+        $statement = $this->db_conn->prepare($sql_query);
+        $statement->bind_param('ss', $loan_number, $doc_type);
+        $statement->execute();
+        $result = $statement->get_result();
+        $row = $result->fetch_array(MYSQLI_NUM);
+        return $row[0];
+    }
+    catch(Exception $e)
+    {
+        echo $e->getMessage()."\n";
+    }
     }
 }
