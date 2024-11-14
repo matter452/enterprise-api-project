@@ -60,15 +60,20 @@ function CreateFileName($loan_num, $doc_type, $db_conn, $new_loan = false)
         $doc_type_count = $db_conn->getCountOfDocTypeForLoan(trim($loan_num), trim($doc_type));
         if ($doc_type_count > 0) {
             if ($doc_type_count == 1) {
-                $doc_type_count;
-            } else {
+                $doc_type_count = 1;
+            } 
+            else 
+            {
                 $doc_type_count -= 1;
             }
             $doc_type_formatted = $doc_type . "_" . "$doc_type_count";
-        } else {
+        } 
+        else 
+        {
             $doc_type_formatted = $doc_type;
         }
-    }else
+    }
+    if($new_loan)
     {
         $doc_type_formatted = $doc_type;
     }
@@ -102,7 +107,7 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
             {
                 throw new Exception("Loan number already exists");
             }
-            $db_conn->insertLoans([trim($loan_number)]);
+            $db_conn->insertLoans([trim($loan_num)]);
 
             $file_name = CreateFileName($loan_num, $doc_type, $db_conn, true);
             UploadDocument($file_name, $db_conn, $file_tmp_path);
@@ -113,7 +118,7 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
             {
                 throw new Exception("Loan number does not exist");
             } 
-            $file_name = CreateFileName($loan_num, $doc_type, $db_conn, true);
+            $file_name = CreateFileName($loan_num, $doc_type, $db_conn, false);
             
             UploadDocument($file_name, $db_conn, $file_tmp_path);
         }
@@ -138,7 +143,7 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 </head>
 
-<body x-data="{ successMessage: <?= json_encode($response['success'] ? $response['message'] : '') ?>, errorMessage: <?= json_encode(!$response['success'] && $response['message'] ? $response['message'] : '') ?> }">
+<body>
 
     <div id="container" class="container">
         <div class="row justify-content-center">
@@ -146,9 +151,6 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
             <div class="panel-body col-6 align-items-center">
                 <template x-if="successMessage">
                     <div class="alert alert-success" x-text="successMessage"></div>
-                </template>
-                <template x-if="errorMessage">
-                    <div class="alert alert-danger" x-text="errorMessage"></div>
                 </template>
                 <form id="uploadForm" class="container justify-content-center" method="post" action="" enctype="multipart/form-data">
                     <input type="hidden" name="MAX_FILE_SIZE" value="10000000">

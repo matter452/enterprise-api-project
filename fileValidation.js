@@ -21,7 +21,7 @@ function validateFile() {
 
   function validateLoanNum(event){
     let numInput = event.target.value;
-    const regex = /^[0-9]{5,9}$/;
+    const regex = /^[0-9]{5,9}$/
     numInput = input.value.replace(/[^0-9]/g, '');
     const match = regex.test(numInput);
 
