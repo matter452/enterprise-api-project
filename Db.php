@@ -340,4 +340,22 @@ class Db
         echo $e->getMessage()."\n";
     }
     }
+
+    function getLoanNumber($loan_number)
+    {
+        try
+        {
+            $sql_query = "SELECT `loan_id` FROM `Loans` WHERE `loan_number` = ?";
+            $statement = $this->db_conn->prepare($sql_query);
+            $statement->bind_param('s', $loan_number);
+            $statement->execute();
+            $statement->store_result();
+            
+            return $statement->num_rows;
+        }
+        catch(Exception $e)
+        {
+            echo $e->getMessage()."\n";
+        }
+    }
 }

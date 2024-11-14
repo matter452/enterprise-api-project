@@ -3,129 +3,127 @@ require_once '/var/www/private/Db.php';
 require_once '/var/www/private/configuration.php';
 require_once '/var/www/private/utils.php';
 
+$temp_dir = "/var/www/private/tempUpload/";
+$upload_success = 1;
+$pdf_type = "application/pdf";
+
 $response = [
     "success" => false,
     "message" => "An unknown error occurred."
 ];
 
-function CreateLoan()
+function ValidateUploadForm($allowed_file_type = "application/pdf")
 {
+    if (!isset($_FILES["userfile"])) {
+        throw new Exception("Error: No file selected for upload.");
+    }
+    $user_file = $_FILES["userfile"]["name"];
+    $file_type = $_FILES["userfile"]["type"];
+    $file_tmp_path = $_FILES["userfile"]['tmp_name'];
+    $loan_option = isset($_POST['loanoption']) ? $_POST['loanoption'] : NULL;
+    $loanNum = isset($_POST['loanNum']) ? $_POST['loanNum'] : NULL;
+    $doc_type = isset($_POST['docType']) ? $_POST['docType'] : NULL;
+
+    if (is_null($loanNum) || is_null($doc_type) || is_null($loan_option) || is_null($user_file)) {
+        throw new Exception("Error: could not upload. Missing Required field(s)");
+    }
+
+    if ($file_type != $allowed_file_type) {
+        throw new Exception("Error: File type not allowed. File must be pdf");
+    }
+
+    else
+    {
+        return [$user_file, $file_type, $file_tmp_path, $loan_option, $loanNum, $doc_type];
+    }
+}
+
+function CheckIfLoan($loan_number, $db_conn, $new_loan = false)
+{       
+    $loan_exists = $db_conn->getLoanNumber($loan_number) > 0 ? true : false;
+    if($new_loan && $loan_exists)
+    {
+        return false;
+    }
+    if(!$new_loan && !$loan_exists)
+    {
+        return false;
+    }
     
+        return true;    
 }
 
-function CreateFileName()
+function CreateFileName($loan_num, $doc_type, $db_conn, $new_loan = false)
 {
-
-}
-
-function UploadDocument()
-{
+    if(!$new_loan)
+    {
+        $doc_type_count = $db_conn->getCountOfDocTypeForLoan(trim($loan_num), trim($doc_type));
+        if ($doc_type_count > 0) {
+            if ($doc_type_count == 1) {
+                $doc_type_count;
+            } else {
+                $doc_type_count -= 1;
+            }
+            $doc_type_formatted = $doc_type . "_" . "$doc_type_count";
+        } else {
+            $doc_type_formatted = $doc_type;
+        }
+    }else
+    {
+        $doc_type_formatted = $doc_type;
+    }
     $time = date("Ymd_H_i_s");
-    $file_name = $loanNum . "-" . $docTypeFormatted . "-" . $time . ".pdf";
-    echo $file_name . "<br>";
-    $file_names = [$file_name];
-    addDocumentsToDb($db_conn, $file_names, 'manual', false);
-    $doc_id_assoc = $db_conn->selectDocidByFilename($file_name);
-    $doc_id = $doc_id_assoc[0]['doc_id'];
-    $fp = fopen($file_tmp_path, "r");
-    $contents = fread($fp, filesize($file_tmp_path));
-    $db_conn->insertDocumentBinary($doc_id, $contents);
-    $db_conn->updateDocumentsTableFileFlag(true, $doc_id);
-    $db_conn->endDbConnection();
+    $file_name = $loan_num . "-" . $doc_type_formatted . "-" . $time . ".pdf";
+    echo "file_name = " . $file_name . "<br>";
+    return $file_name;
+}
+
+function UploadDocument($file_name, $db_conn, $file_tmp_path)
+{
+        $file_names = [$file_name];
+        addDocumentsToDb($db_conn, $file_names, 'manual', false);
+        $doc_id_assoc = $db_conn->selectDocidByFilename($file_name);
+        $doc_id = $doc_id_assoc[0]['doc_id'];
+        $fp = fopen($file_tmp_path, "r");
+        $contents = fread($fp, filesize($file_tmp_path));
+        $db_conn->insertDocumentBinary($doc_id, $contents);
+        $db_conn->updateDocumentsTableFileFlag(true, $doc_id);
+        $db_conn->endDbConnection();
 }
 
 if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
     try {
-        if (!isset($_FILES["userfile"])) {
-            throw new Exception("Error: No file uploaded.");
-        }
-        $user_file = $_FILES["userfile"]["name"];
-        $file_type = $_FILES["userfile"]["type"];
-        $file_tmp_path = $_FILES["userfile"]['tmp_name'];
-        $loan_option = isset($_POST['loanoption']) ? $_POST['loanoption'] : NULL;
-        $loanNum = isset($_POST['loanNum']) ? $_POST['loanNum'] : NULL;
-        $doc_type = isset($_POST['docType']) ? $_POST['docType'] : NULL;
-
-        if (is_null($loanNum) || is_null($doc_type) || is_null($loan_option) || is_null($user_file)) {
-            throw new Exception("Error: could not upload. Missing Required field(s)");
-        }
-
-        if ($file_type != $pdf_type) {
-            throw new Exception("Error: could not upload. File must be pdf");
-        }
-        echo "loannum: " . $loanNum . "doctype: " . $doc_type . " new or old loan: " . $loan_option . "filetype: " . $file_type . "<br>";
+        [$user_file, $file_type, $file_tmp_path, $loan_option, $loan_num, $doc_type] = ValidateUploadForm();
+        /* echo "loannum: " . $loanNum . "doctype: " . $doc_type . " new or old loan: " . $loan_option . "filetype: " . $file_type . "<br>"; */
         $db_conn = new Db(DB_USER, DB_PASS, DB_NAME);
 
         if ($loan_option == 'new') {
-            $file_exists = $db_conn->getDocWithName($user_file) ? true : false;
-            if ($file_exists) {
-                throw new Exception("Error: could not upload. File already exists.");
+            if(!CheckIfLoan($loan_num, $db_conn, true))
+            {
+                throw new Exception("Loan number already exists");
             }
-            $db_conn->insertLoans([trim($loanNum)]);
-            $doc_type_count = $db_conn->getCountOfDocTypeForLoan(trim($loanNum), trim($doc_type));
-            if ($doc_type_count > 0) {
-                if ($doc_type_count == 1) {
-                    $doc_type_count;
-                } else {
-                    $doc_type_count -= 1;
-                }
-                $doc_type_formatted = $doc_type . "_" . "$doc_type_count";
-            } else {
-                $doc_type_formatted = $doc_type;
-            }
+            $db_conn->insertLoans([trim($loan_number)]);
 
-            $time = date("Ymd_H_i_s");
-            $file_name = $loanNum . "-" . $docTypeFormatted . "-" . $time . ".pdf";
-            echo $file_name . "<br>";
-            $file_names = [$file_name];
-            addDocumentsToDb($db_conn, $file_names, 'manual', false);
-            $doc_id_assoc = $db_conn->selectDocidByFilename($file_name);
-            $doc_id = $doc_id_assoc[0]['doc_id'];
-            $fp = fopen($file_tmp_path, "r");
-            $contents = fread($fp, filesize($file_tmp_path));
-            $db_conn->insertDocumentBinary($doc_id, $contents);
-            $db_conn->updateDocumentsTableFileFlag(true, $doc_id);
-            $db_conn->endDbConnection();
-            $response["success"] = true;
-            $response["message"] = "File uploaded successfully!";
+            $file_name = CreateFileName($loan_num, $doc_type, $db_conn, true);
+            UploadDocument($file_name, $db_conn, $file_tmp_path);
         }
-
+        
         if ($loan_option == 'existing') {
-            echo 'existing loan selected<br>';
-            $doc_type_count = $db_conn->getCountOfDocTypeForLoan(trim($loanNum), trim($doc_type));
-            echo "type count: " . $doc_type_count . "<br>";
-            if ($doc_type_count > 0) {
-                if ($doc_type_count == 1) {
-                    $doc_type_count;
-                } else {
-                    $doc_type_count -= 1;
-                }
-                $doc_type_formatted = $doc_type . "_" . $doc_type_count;
-                echo "formatted doctype: " . $doc_type_formatted . "<br>";
-            } else {
-                $doc_type_formatted = $doc_type;
-                echo "formatted doctype: " . $doc_type_formatted . "<br>";
-            }
-            $time = date("Ymd_H_i_s");
-            $file_name = $loanNum . "-" . $doc_type_formatted . "-" . $time . ".pdf";
-            echo "file_name = " . $file_name . "<br>";
-            $file_names = [$file_name];
-            addDocumentsToDb($db_conn, $file_names, 'manual', false);
-            $doc_id_assoc = $db_conn->selectDocidByFilename($file_name);
-            $doc_id = $doc_id_assoc[0]['doc_id'];
-            $fp = fopen($file_tmp_path, "r");
-            $contents = fread($fp, filesize($file_tmp_path));
-            $db_conn->insertDocumentBinary($doc_id, $contents);
-            $db_conn->updateDocumentsTableFileFlag(true, $doc_id);
-            $db_conn->endDbConnection();
-            $response["message"] = "File uploaded successfully!";
+            if(!CheckIfLoan($loan_num, $db_conn, false))
+            {
+                throw new Exception("Loan number does not exist");
+            } 
+            $file_name = CreateFileName($loan_num, $doc_type, $db_conn, true);
+            
+            UploadDocument($file_name, $db_conn, $file_tmp_path);
         }
-        echo $response["message"];
+        $response["success"] = true;
+        $response["message"] = "Successfully uploaded document";
+        
     } catch (Exception $e) {
         $response["message"] = $e->getMessage();
-        echo $response["message"];
+        $response["success"] = false;
     }
-} else {
 }
 ?>
 <!doctype html>
@@ -191,7 +189,7 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
                             <div class="row btn btn-file text-dark btn-outline-primary hover:bs-primary-border-subtle">
                                 <span class="fileupload-new fs-5 fw-medium">Select File</span>
                                 <span class="fileupload-exists d-none">Change</span>
-                                <input id="fileupload" class="m-3 p-3" name="userfile" type="file" accept="application/pdf, " onchange="validateFile()" required>
+                                <input id="fileupload" class="m-3 p-3" name="userfile" type="file" accept="application/pdf" onchange="validateFile()" required>
                             </div>
                             <button href="#" class="btn btn-danger fileupload-exists mt-2" type="button" onclick="removeFile()" data-dismiss="fileupload">Remove</button>
                         </div>
@@ -200,7 +198,7 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
                     <button type="submit" name="submit" value="submit" class="btn btn-lg btn-block btn-success">Upload File</button>
                 </form>
                 <div id="uploadResult">
-                    "$result"
+                    
 
                 </div>
             </div>
@@ -211,11 +209,7 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
     <script src="fileValidation.js"></script>';
 
 
-    $temp_dir = "/var/www/private/tempUpload/";
-    $upload_success = 1;
-    $pdf_type = "application/pdf";
-
-    ?>
+    
 </body>
 
 </html>
