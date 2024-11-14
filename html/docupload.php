@@ -8,8 +8,8 @@ $upload_success = 1;
 $pdf_type = "application/pdf";
 
 $response = [
-    "success" => false,
-    "message" => "An unknown error occurred."
+    "success" => null,
+    "message" => ""
 ];
 
 function ValidateUploadForm($allowed_file_type = "application/pdf")
@@ -24,6 +24,8 @@ function ValidateUploadForm($allowed_file_type = "application/pdf")
     $loanNum = isset($_POST['loanNum']) ? $_POST['loanNum'] : NULL;
     $doc_type = isset($_POST['docType']) ? $_POST['docType'] : NULL;
 
+    $valid_loan_num = preg_match("/^[0-9]{5,9}$/", trim($loanNum));
+
     if (is_null($loanNum) || is_null($doc_type) || is_null($loan_option) || is_null($user_file)) {
         throw new Exception("Error: could not upload. Missing Required field(s)");
     }
@@ -31,7 +33,10 @@ function ValidateUploadForm($allowed_file_type = "application/pdf")
     if ($file_type != $allowed_file_type) {
         throw new Exception("Error: File type not allowed. File must be pdf");
     }
-
+    if ($valid_loan_num == false){
+        
+        throw new Exception("Error: Invalid Loan number. Number must be 5-9 digits");
+    }
     else
     {
         return [$user_file, $file_type, $file_tmp_path, $loan_option, $loanNum, $doc_type];
@@ -40,7 +45,9 @@ function ValidateUploadForm($allowed_file_type = "application/pdf")
 
 function CheckIfLoan($loan_number, $db_conn, $new_loan = false)
 {       
+    ob_start();
     $loan_exists = $db_conn->getLoanNumber($loan_number) > 0 ? true : false;
+    ob_end_clean();
     if($new_loan && $loan_exists)
     {
         return false;
@@ -50,14 +57,16 @@ function CheckIfLoan($loan_number, $db_conn, $new_loan = false)
         return false;
     }
     
-        return true;    
+    return true;    
 }
 
 function CreateFileName($loan_num, $doc_type, $db_conn, $new_loan = false)
 {
     if(!$new_loan)
     {
+        ob_start();
         $doc_type_count = $db_conn->getCountOfDocTypeForLoan(trim($loan_num), trim($doc_type));
+        ob_end_clean();
         if ($doc_type_count > 0) {
             if ($doc_type_count == 1) {
                 $doc_type_count = 1;
@@ -79,44 +88,51 @@ function CreateFileName($loan_num, $doc_type, $db_conn, $new_loan = false)
     }
     $time = date("Ymd_H_i_s");
     $file_name = $loan_num . "-" . $doc_type_formatted . "-" . $time . ".pdf";
-    echo "file_name = " . $file_name . "<br>";
     return $file_name;
 }
 
 function UploadDocument($file_name, $db_conn, $file_tmp_path)
 {
-        $file_names = [$file_name];
-        addDocumentsToDb($db_conn, $file_names, 'manual', false);
-        $doc_id_assoc = $db_conn->selectDocidByFilename($file_name);
-        $doc_id = $doc_id_assoc[0]['doc_id'];
-        $fp = fopen($file_tmp_path, "r");
-        $contents = fread($fp, filesize($file_tmp_path));
-        $db_conn->insertDocumentBinary($doc_id, $contents);
-        $db_conn->updateDocumentsTableFileFlag(true, $doc_id);
-        $db_conn->endDbConnection();
+    $file_names = [$file_name];
+    ob_start();
+    addDocumentsToDb($db_conn, $file_names, 'manual', false);
+    ob_end_clean();
+    ob_start();
+    $doc_id_assoc = $db_conn->selectDocidByFilename($file_name);
+    ob_end_clean();
+    $doc_id = $doc_id_assoc[0]['doc_id'];
+    $fp = fopen($file_tmp_path, "r");
+    $contents = fread($fp, filesize($file_tmp_path));
+    ob_start();
+    $db_conn->insertDocumentBinary($doc_id, $contents);
+    $db_conn->updateDocumentsTableFileFlag(true, $doc_id);
+    $db_conn->endDbConnection();
+    ob_end_clean();
 }
 
 if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
     try {
         [$user_file, $file_type, $file_tmp_path, $loan_option, $loan_num, $doc_type] = ValidateUploadForm();
-        /* echo "loannum: " . $loanNum . "doctype: " . $doc_type . " new or old loan: " . $loan_option . "filetype: " . $file_type . "<br>"; */
+        ob_start();
         $db_conn = new Db(DB_USER, DB_PASS, DB_NAME);
-
+        ob_end_clean();
+        
         if ($loan_option == 'new') {
             if(!CheckIfLoan($loan_num, $db_conn, true))
             {
-                throw new Exception("Loan number already exists");
+                throw new Exception("Error: Loan number already exists");
             }
             $db_conn->insertLoans([trim($loan_num)]);
-
+            
             $file_name = CreateFileName($loan_num, $doc_type, $db_conn, true);
             UploadDocument($file_name, $db_conn, $file_tmp_path);
+            
         }
         
         if ($loan_option == 'existing') {
             if(!CheckIfLoan($loan_num, $db_conn, false))
             {
-                throw new Exception("Loan number does not exist");
+                throw new Exception("Error: Loan number does not exist");
             } 
             $file_name = CreateFileName($loan_num, $doc_type, $db_conn, false);
             
@@ -124,10 +140,9 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
         }
         $response["success"] = true;
         $response["message"] = "Successfully uploaded document";
-        
     } catch (Exception $e) {
-        $response["message"] = $e->getMessage();
         $response["success"] = false;
+        $response["message"] = $e->getMessage();
     }
 }
 ?>
@@ -139,7 +154,6 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
     <title>Upload to New Loan</title>
     <!-- BOOTSTRAP STYLES-->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 </head>
 
@@ -149,9 +163,9 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
         <div class="row justify-content-center">
             <h1 class="text-center">Upload a New File to Database</h1>
             <div class="panel-body col-6 align-items-center">
-                <template x-if="successMessage">
-                    <div class="alert alert-success" x-text="successMessage"></div>
-                </template>
+                <div id="formMessage" class="<?= is_null($response["success"]) ? 'd-none' : ''?><?= $response["success"] === false ? 'alert alert-danger' : 'alert alert-success'?>" role="alert">
+                    <?= !is_null($response["success"]) ? $response["message"] : '' ?>
+                </div>
                 <form id="uploadForm" class="container justify-content-center" method="post" action="" enctype="multipart/form-data">
                     <input type="hidden" name="MAX_FILE_SIZE" value="10000000">
                     <div class="row form-group row-gap-3">
@@ -165,7 +179,7 @@ if (isset($_POST['submit']) && $_POST['submit'] == "submit") {
                     </div>
                     <div class="row form-group row-gap-3">
                         <label for="loanNum" class="control-label">Loan Number</label>
-                        <input type="text" name="loanNum" class="form-control" oninput="validateLoanNum(event)">
+                        <input type="text" name="loanNum" class="form-control" oninput="validateLoanNum(event)" required>
                         <span id="loanNumMessage">Must be a valid loan number</span>
                     </div>
                     <div class="row form-group row-gap-3">
