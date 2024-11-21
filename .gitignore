@@ -402,3 +402,6 @@ FodyWeavers.xsd
 configuration.php
 paperwork/
 vanillacode.php
+ehd452/
+*.zip
+*.txt

@@ -3,10 +3,6 @@ require_once '/var/www/private/Db.php';
 require_once '/var/www/private/configuration.php';
 require_once '/var/www/private/utils.php';
 
-$temp_dir = "/var/www/private/tempUpload/";
-$upload_success = 1;
-$pdf_type = "application/pdf";
-
 $response = [
     "success" => null,
     "message" => ""

@@ -241,8 +241,9 @@ class Db
     function insertDocumentBinary($document_id, $file_binary)
     {
         try{
-
+            $this->db_conn->begin_transaction();
             $sql_query = "INSERT INTO `document_data` (`doc_id`, `file_content`) VALUES (?, ?)";
+
             $statement = $this->db_conn->prepare($sql_query);
             $statement->bind_param('is', $document_id, $file_binary);
             $statement->execute();
@@ -250,9 +251,48 @@ class Db
             $statement->close();
             if($affected_rows <= 0)
             {
+                $this->db_conn->rollback();
                 return false;
             }
-            echo "inserted ".strlen($file_binary)." bytes.";
+            echo "inserted ".strlen($file_binary)." bytes.\n";
+            $filesize_updated = $this->updateFileSize($document_id);
+            if($filesize_updated === false)
+            {
+                throw new Exception("Could not update filesize");
+            }
+            $this->db_conn->commit();
+            return $affected_rows;
+        }
+        catch(Exception $e)
+        {
+            $this->db_conn->rollback();
+            echo $e->getMessage()."\n\n";
+        }
+    }
+
+    function updateFileSize($document_id)
+    {
+        try
+        {
+            $sql_query = "UPDATE `Loan_Documents`
+            JOIN `document_data` ON document_data.doc_id = Loan_Documents.doc_id
+            SET Loan_Documents.file_size = OCTET_LENGTH((
+            SELECT document_data.file_content
+            FROM `document_data`
+            WHERE `doc_id` = ?
+            LIMIT 1
+            ))
+            WHERE Loan_Documents.doc_id = ?";
+            $statement = $this->db_conn->prepare($sql_query);
+            $statement->bind_param('ss', $document_id, $document_id);
+            $statement->execute();
+            $affected_rows = $statement->affected_rows;
+            $statement->close();
+            if($affected_rows <= 0)
+            {
+                return false;
+            }
+            echo "Successfuly updated file_sizes for ".$affected_rows."\n\n";
             return $affected_rows;
         }
         catch(Exception $e)
@@ -356,6 +396,120 @@ class Db
         catch(Exception $e)
         {
             echo $e->getMessage()."\n";
+        }
+    }
+
+    function getDocsForLoanNumber($loan_number)
+    {
+        try
+        {
+            $sql_query = "SELECT `doc_loan_number`, `doc_type`, `file_name`, `file_size`, `last_access`, `upload_datetime` FROM `Loan_Documents` WHERE `doc_loan_number` = ?";
+            $statement = $this->db_conn->prepare($sql_query);
+            $statement->bind_param('s', $loan_number);
+            $statement->execute();
+            $statement->store_result();
+            
+            return $statement->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+        catch(Exception $e)
+        {
+            echo $e->getMessage()."\n";
+        }
+    }
+
+    function getDocsByDate($date, $document, $date_end_range = false)
+    {
+        try
+        {
+            if(!$date_end_range)
+            {
+                $date_end_range = $date;
+            }
+
+            $sql_query = "SELECT `doc_loan_number`, `doc_type`, `file_name`, `file_size`, `last_access`, `upload_datetime` FROM `Loan_Documents` WHERE `upload_datetime` BETWEEN ? AND ?";
+            $statement = $this->db_conn->prepare($sql_query);
+            $statement->bind_param('ss', $date, $date_end_range);
+            $statement->execute();
+            $statement->store_result();
+            
+            return $statement->get_result()->fetch_all(MYSQLI_ASSOC);
+        }
+        catch(Exception $e)
+        {
+            echo $e->getMessage()."\n";
+        }
+    }
+
+    function getDocuments($type = false, $date = false, $date_end = false)
+    {
+        try
+        {
+            $sql_query = "SELECT `doc_id`, `doc_loan_number`, `doc_type`, `file_name`, `file_size`, `last_access`, `upload_datetime` FROM `Loan_Documents` WHERE 1=1";
+
+            $filters = [];
+            $params = [];
+            
+            if ($type && $type != 'all') {
+                $filters[] = "`doc_type` = ?";
+                $params[] = $type;
+            }
+            if ($date) {
+                $filters[] = "`upload_datetime` >= ?";
+                $params[] = $date;
+            }
+            if ($date_end) {
+                $filters[] = "`upload_datetime` <= ?";
+                $params[] = $date_end;
+            }
+            if (count($filters) > 0) {
+                $sql_query .= " AND " . implode(" AND ", $filters);
+            }
+
+            $stmt = $this->db_conn->prepare($sql_query);
+            if (count($params) > 0) {
+                $paramtypes = str_repeat('s', count($params));
+                $stmt->bind_param($paramtypes, ...$params);
+            }
+            
+            $stmt->execute();
+            $result = $stmt->get_result();
+            $documents = [];
+
+            while ($row = $result->fetch_assoc()) {
+                $documents[] = $row;
+            }
+            $stmt->close();
+            return $documents;
+        }
+        catch(Exception $e)
+        {
+            echo $e->getMessage()."\n";
+        }
+    }
+
+
+    function getDocumentFile($doc_id, $file_name)
+    {
+        $sql_query = "SELECT file_content FROM document_data WHERE doc_id = ?";
+        $statement = $this->db_conn->prepare($sql_query);
+        $statement->bind_param('s', $$doc_id);
+        $statement->execute();
+        $statement->store_result();
+        $pdf = $statement->get_result()->fetch_array(MYSQLI_ASSOC);
+
+        if ($pdf) {
+            $pdf_bin = $pdf['file_content'];
+        
+            header('Content-Type: application/pdf');
+            header('Content-Disposition: inline; filename="' . basename($file_name) . '"');
+            header('Content-Length: ' . strlen($pdf_bin));
+        
+            $stream = fopen('php://output', 'wb');
+            fwrite($stream, $pdf_bin);
+            fclose($stream);
+        } else {
+            header('HTTP/1.1 404 Not Found');
+            echo "PDF not found.";
         }
     }
 }
