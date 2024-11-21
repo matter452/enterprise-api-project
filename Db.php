@@ -440,55 +440,65 @@ class Db
         }
     }
 
-    function getDocuments($type = false, $date = false, $date_end = false)
+    function getDocuments($type = false, $date = false, $date_end = false, $loan_number = false)
     {
         try
         {
-            $sql_query = "SELECT `doc_id`, `doc_loan_number`, `doc_type`, `file_name`, `file_size`, `last_access`, `upload_datetime` FROM `Loan_Documents` WHERE 1=1";
-
-            $filters = [];
-            $params = [];
-            
-            if ($type && $type != 'all') {
-                $filters[] = "`doc_type` = ?";
-                $params[] = $type;
+            if(!$loan_number)
+            {
+                $sql_query = "SELECT `doc_id`, `doc_loan_number`, `doc_type`, `file_name`, `file_size`, `last_access`, `upload_datetime` FROM `Loan_Documents` WHERE 1=1";
+                
+                $filters = [];
+                $params = [];
+                
+                if ($type && $type != 'all') {
+                    $filters[] = "`doc_type` = ?";
+                    $params[] = $type;
+                }
+                if ($date) {
+                    $filters[] = "`upload_datetime` >= ?";
+                    $params[] = $date;
+                }
+                if ($date_end) {
+                    $filters[] = "`upload_datetime` <= ?";
+                    $params[] = $date_end;
+                }
+                if (count($filters) > 0) {
+                    $sql_query .= " AND " . implode(" AND ", $filters);
+                }
+                
+                $statement = $this->db_conn->prepare($sql_query);
+                if (count($params) > 0) {
+                    $paramtypes = str_repeat('s', count($params));
+                    $statement->bind_param($paramtypes, ...$params);
+                }
+                
+                
             }
-            if ($date) {
-                $filters[] = "`upload_datetime` >= ?";
-                $params[] = $date;
+            else
+            {
+                $sql_query = "SELECT `doc_id`, `doc_loan_number`, `doc_type`, `file_name`, `file_size`, `last_access`, `upload_datetime` FROM `Loan_Documents` WHERE `doc_loan_number` = ?";
+                $statement = $this->db_conn->prepare($sql_query);
+                $statement->bind_param('s', $loan_number);
             }
-            if ($date_end) {
-                $filters[] = "`upload_datetime` <= ?";
-                $params[] = $date_end;
-            }
-            if (count($filters) > 0) {
-                $sql_query .= " AND " . implode(" AND ", $filters);
-            }
-
-            $stmt = $this->db_conn->prepare($sql_query);
-            if (count($params) > 0) {
-                $paramtypes = str_repeat('s', count($params));
-                $stmt->bind_param($paramtypes, ...$params);
-            }
-            
-            $stmt->execute();
-            $result = $stmt->get_result();
+            $statement->execute();
+            $result = $statement->get_result();
             $documents = [];
-
             while ($row = $result->fetch_assoc()) {
                 $documents[] = $row;
             }
-            $stmt->close();
+            $statement->close();
             return $documents;
+            
         }
         catch(Exception $e)
         {
             echo $e->getMessage()."\n";
         }
     }
-
-
-    function getDocumentFile($doc_id, $file_name)
+        
+        
+        function getDocumentFile($doc_id, $file_name)
     {
         $sql_query = "SELECT file_content FROM document_data WHERE doc_id = ?";
         $statement = $this->db_conn->prepare($sql_query);
