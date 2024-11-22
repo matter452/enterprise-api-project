@@ -478,8 +478,17 @@ class Db
             else
             {
                 $sql_query = "SELECT `doc_id`, `doc_loan_number`, `doc_type`, `file_name`, `file_size`, `last_access`, `upload_datetime` FROM `Loan_Documents` WHERE `doc_loan_number` = ?";
+                $params[] = $loan_number;
+                if ($type && $type != 'all') {
+                    $sql_query .= " AND `doc_type` = ?";
+                    $params[] = $type;
+                }
                 $statement = $this->db_conn->prepare($sql_query);
-                $statement->bind_param('s', $loan_number);
+                if (count($params) > 0) {
+                    $paramtypes = str_repeat('s', count($params));
+                    $statement->bind_param($paramtypes, ...$params);
+                }
+                
             }
             $statement->execute();
             $result = $statement->get_result();
@@ -498,7 +507,7 @@ class Db
     }
         
         
-        function getDocumentFile($doc_id, $file_name)
+    function getDocumentFile($doc_id, $file_name)
     {
         $sql_query = "SELECT file_content FROM document_data WHERE doc_id = ?";
         $statement = $this->db_conn->prepare($sql_query);
