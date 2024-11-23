@@ -3,6 +3,7 @@ session_start();
 require_once '/var/www/private/Db.php';
 require_once '/var/www/private/utils.php';
 require_once '/var/www/private/configuration.php';
+//make sure we're cheking session first so file cannot be retreived without a valid session.
 if(!isset($_SESSION['searchId']))
 {
     echo '<p>No active Session... Redirecting in 5 seconds</p>';

@@ -511,14 +511,13 @@ class Db
     {
         try
         {
-            $access_time = new DateTime("now");
-            $date_str = $access_time->format('Y-m-d H:i:s');
+            $access_time = currTime();
             $sql_query = "UPDATE `Loan_Documents`
             SET `last_access` = ?
             WHERE `doc_id` = ?
             LIMIT 1";
             $statement = $this->db_conn->prepare($sql_query);
-            $statement->bind_param('si', $date_str, $doc_id);
+            $statement->bind_param('si', $access_time, $doc_id);
             $statement->execute();
             $affected_rows = $statement->affected_rows;
             $statement->close();

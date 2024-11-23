@@ -1,4 +1,5 @@
 <?php
+//if someone visits the search results page without making a search boot thme back to dashboard to make a search
 session_start();
 if(!isset($_SESSION['searchId']) || ($_COOKIE['PHPSESSID'] !== session_id()))
 {

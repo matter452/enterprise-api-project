@@ -1,4 +1,5 @@
 <?php
+//creating a session to simulate authentication and make sure files are not available accessing the results page link
 $_COOKIE['PHPSESSID'] = '';
 session_destroy();
 session_start();
