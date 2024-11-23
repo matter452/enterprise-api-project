@@ -506,23 +506,50 @@ class Db
         }
     }
         
-        
-    function getDocumentFile($doc_id, $file_name)
+    
+    function updateAccess($doc_id)
     {
-        $sql_query = "SELECT file_content FROM document_data WHERE doc_id = ?";
+        try
+        {
+            $access_time = new DateTime("now");
+            $date_str = $access_time->format('Y-m-d H:i:s');
+            $sql_query = "UPDATE `Loan_Documents`
+            SET `last_access` = ?
+            WHERE `doc_id` = ?
+            LIMIT 1";
+            $statement = $this->db_conn->prepare($sql_query);
+            $statement->bind_param('si', $date_str, $doc_id);
+            $statement->execute();
+            $affected_rows = $statement->affected_rows;
+            $statement->close();
+            if($affected_rows <= 0)
+            {
+                return false;
+            }
+            echo "Successfuly updated last access time ".$affected_rows."\n\n";
+        }
+        catch(Exception $e)
+        {
+            echo $e->getMessage()."\n\n";
+        }
+    }
+
+    function getDocumentFile($doc_id)
+    {
+        $sql_query = "SELECT `file_content` FROM `document_data` WHERE document_data.doc_id = ?";
         $statement = $this->db_conn->prepare($sql_query);
-        $statement->bind_param('s', $$doc_id);
+        $statement->bind_param('i', $doc_id);
         $statement->execute();
-        $statement->store_result();
-        $pdf = $statement->get_result()->fetch_array(MYSQLI_ASSOC);
+        $result = $statement->get_result();
+        $pdf = $result->fetch_assoc();
 
         if ($pdf) {
             $pdf_bin = $pdf['file_content'];
         
             header('Content-Type: application/pdf');
-            header('Content-Disposition: inline; filename="' . basename($file_name) . '"');
+            header('Content-Disposition: inline; filename=document_'.$doc_id);
             header('Content-Length: ' . strlen($pdf_bin));
-        
+            echo $pdf_bin;
             $stream = fopen('php://output', 'wb');
             fwrite($stream, $pdf_bin);
             fclose($stream);

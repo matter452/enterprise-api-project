@@ -18,14 +18,17 @@ console.log(results);
                     <td class="px-4 py-2 text-sm">${doc.doc_id}</td>
                     <td class="px-4 py-2 text-sm">${doc.doc_loan_number}</td>
                     <td class="px-4 py-2 text-sm">${doc.doc_type}</td>
-                    <td class="px-4 py-2 text-sm">${doc.file_name}</td>
+                    <td id="${doc.doc_id}" class="px-4 py-2 text-sm">
+                        <a class="underline underline-offset-2 text-neutral-950 hover:decoration-2 hover:text-blue-950"
+                        target="_blank" href="/file.php?fid=${doc.doc_id}">
+                        ${doc.file_name}
+                        </a>
+                    </td>
                     <td class="px-4 py-2 text-sm">${(doc.file_size / (Math.pow(1024,2))).toFixed(1)}Mb</td>
                     <td class="px-4 py-2 text-sm">${doc.last_access}</td>
                     <td class="px-4 py-2 text-sm">${doc.upload_datetime}</td>`;
                     table_body.appendChild(row);
         });
-
-        //sessionStorage.removeItem('searchResults');
 
     } 
     else

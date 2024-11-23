@@ -1,10 +1,11 @@
 <?php
-
-/* $data = json_decode($jsonData, true);
-$rowsPerPage = 25;
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-$startIndex = ($page - 1) * $rowsPerPage;
-$paginatedData = array_slice($data, $startIndex, $rowsPerPage); */
+session_start();
+if(!isset($_SESSION['searchId']) || ($_COOKIE['PHPSESSID'] !== session_id()))
+{
+    echo '<p>Invalid Session... Redirecting in 4 seconds</p>';
+    sleep(4);
+    header("Location: /dashboard.php");
+}
 ?>
 
 <!DOCTYPE html>
