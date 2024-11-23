@@ -548,7 +548,6 @@ class Db
             header('Content-Type: application/pdf');
             header('Content-Disposition: inline; filename=document_'.$doc_id);
             header('Content-Length: ' . strlen($pdf_bin));
-            echo $pdf_bin;
             $stream = fopen('php://output', 'wb');
             fwrite($stream, $pdf_bin);
             fclose($stream);
