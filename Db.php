@@ -301,49 +301,6 @@ class Db
         }
     }
 
-    function setLastSession($sid)
-    {
-        try
-        {
-            $sql_query = "INSERT INTO `Sessions` (`session_id`, `session_number`) VALUES (1, ?)
-            ON DUPLICATE KEY UPDATE session_number = ?";
-
-            $statement = $this->db_conn->prepare($sql_query);
-            $statement->bind_param('ss', $sid, $sid);
-            if($statement->execute())
-            {
-                echo "Last session stored in database successfully\n\n";
-                $statement->close();
-            }
-            else
-            {
-                echo "Failed to store session in databse\n\n";
-            }
-    }
-    catch(Exception $e)
-    {
-        echo $e->getMessage()."\n";
-    }
-    }
-
-    function getLastSession()
-    {
-        $sql_query = "SELECT `session_number` FROM `Sessions`";
-        $result = $this->db_conn->execute_query($sql_query);
-        if($result->num_rows === 0)
-        {
-            echo "Failed to get session in databse\n\n";
-            return false;
-        }
-        else
-        {
-            echo "retrieved last session\n\n";
-            $sid_result = $result->fetch_row();
-            return $sid_result[0];
-        }
-        
-    }
-
     function getDocWithName($file_name)
     {
         try
@@ -556,4 +513,15 @@ class Db
             echo "PDF not found.";
         }
     }
+
+    function reporting($queryString)
+    {
+        $sql_query = $queryString;
+        $statement = $this->db_conn->prepare($sql_query);
+        $statement->execute();
+        $result = $statement->get_result();
+        return $result->fetch_all(MYSQLI_ASSOC);
+        $statement->close();
+    }
+
 }

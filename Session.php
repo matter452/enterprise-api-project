@@ -1,5 +1,4 @@
 <?php
-//require_once('Loan.php');
 require_once('/var/www/private/Response.php');
 
 class Session 
@@ -31,25 +30,13 @@ class Session
             {
                 if(strstr($this->getRequestResponse()->msg, "Previous"))
                 {
-                    /* echo currTime()." Attempting to retrieve previous session.\n";
-                    $db = new Db(DB_USER, DB_PASS, DB_NAME);
-                    $last_session_id = $db->getLastSession();
-                    $db->endDbConnection();
-                    if(!$last_session_id)
-                    { */
-                        echo currTime()." Attempting to clear session...\n";
-                        $this->clearSession();
-                        return $this->createSessionRequest();
-                    /* } */
-                    /* $this->setSessionId($last_session_id); */
-                    /* return true; */
+                    echo currTime()." Attempting to clear session...\n";
+                    $this->clearSession();
+                    return $this->createSessionRequest();
                 }
-                //throw new Exception("\n".currTime()." Error: could not create session.\n");
             }
             $this->setSessionId();
-/*             $db = new Db(DB_USER, DB_PASS, DB_NAME);
-            $db->setLastSession($this->session_id);
-            $db->endDbConnection(); */
+
             return $response;
         }
         catch(Exception $e)
@@ -103,13 +90,12 @@ class Session
         $response = curl_exec($this->curl_ch);
         if($response == false)
         {
-            //curl_errno($this->curl_ch)
             if($connect_attempt < $this->max_attempt)
             {
                 echo "\n".currTime()." curl error: " . curl_errno($this->curl_ch)." ". curl_error($this->curl_ch)."\n";
                 curl_close($this->curl_ch);
-                echo "retrying in 10 seconds\n";
-                sleep(10);
+                echo "retrying in 3 seconds\n";
+                sleep(3);
                 echo currTime()." retrying...\n";
 
                 $connect_attempt++;

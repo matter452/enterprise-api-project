@@ -40,11 +40,6 @@ class Response
         }
     }
 
-    function logResponseError()
-    {
-
-    }
-
     function isStatusOk()
     {
         echo currTime()." Checking response status...\n";

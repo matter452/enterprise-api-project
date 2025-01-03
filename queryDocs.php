@@ -70,11 +70,8 @@ try
     }
     echo currTime()." inserting documents\n";
     $db->insertDocuments($session_documents);
-    //////
     echo currTime()." Checking for missing documents\n";
     updateAllDocuments($session, $db);
-    
-    /////
 }
 catch(Exception $e)
 {
